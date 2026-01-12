@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>速成大冒險 | Quick Input Adventure</title>
+    
+    <!-- Core Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand': { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7' },
+                        'wood': { 100: '#fef3c7', 300: '#fcd34d', 800: '#92400e' },
+                        'space': { 900: '#0f172a', 800: '#1e293b', 400: '#38bdf8' },
+                    },
+                    fontFamily: {
+                        'serif': ['"Noto Serif TC"', '"Songti TC"', 'serif'],
+                        'sans': ['"Noto Sans TC"', 'sans-serif'],
+                        'mono': ['"Noto Sans Mono"', 'monospace'],
+                    },
+                    animation: {
+                        'run': 'run 0.6s steps(4) infinite',
+                        'road': 'road 2s linear infinite',
+                        'road-fast': 'road 1s linear infinite',
+                        'pulse-slow': 'pulse 3s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+                        'slide-bg': 'slideBg 10s linear infinite',
+                    },
+                    keyframes: {
+                        run: { '0%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-5px)' }, '100%': { transform: 'translateY(0)' } },
+                        road: { '0%': { backgroundPosition: '0 0' }, '100%': { backgroundPosition: '-100% 0' } },
+                        slideBg: { '0%': { backgroundPosition: '0% 0%' }, '100%': { backgroundPosition: '100% 0%' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        shake: { 
+                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700&display=swap');
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            background-color: #f8fafc;
+        }
+
+        #root {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Keyboard Grid */
+        .keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+        }
+
+        /* Road Perspective */
+        .perspective-road {
+            transform: perspective(500px) rotateX(40deg);
+            transform-origin: bottom;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+        const { motion, AnimatePresence } = window.Motion;
+        
+        const { icons } = lucide;
+        const { 
+            Settings, Volume2, ArrowLeft, Play, User, Trophy, Star, Zap, 
+            LayoutGrid, Rocket, Heart, AlertTriangle, CheckCircle, RefreshCw,
+            Keyboard, MousePointer2, Box, Home, Trees, Cloud, Moon, Flag, Timer,
+            Leaf, Smile, Coffee, BookOpen
+        } = icons;
+
+        // Helper to render Lucide Icons properly
+        const LucideIcon = ({ icon, size = 24, className = "" }) => {
+            if (!icon) return null;
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icon.map(([tag, attrs], i) => React.createElement(tag, { ...attrs, key: i }))}
+                </svg>
+            );
+        };
+
+        // --- 🎵 Audio Engine ---
+        const AudioEngine = {
+            ctx: null,
+            init: function() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+            playTone: function(freq, type, duration, vol = 0.1) {
+                if (!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            },
+            correct: function() { this.playTone(880, 'sine', 0.1); setTimeout(() => this.playTone(1760, 'sine', 0.2), 100); },
+            wrong: function() { this.playTone(150, 'sawtooth', 0.3); setTimeout(() => this.playTone(100, 'sawtooth', 0.4), 150); },
+            click: function() { this.playTone(400, 'triangle', 0.05, 0.05); },
+            win: function() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.2), i * 150)); }
+        };
+
+        // --- 📚 Data: Cangjie Codes & Characters ---
+        const KEYBOARD_MAP = {
+            'A': '日', 'B': '月', 'C': '金', 'D': '木', 'E': '水', 'F': '火', 'G': '土',
+            'H': '竹', 'I': '戈', 'J': '十', 'K': '大', 'L': '中', 'M': '一', 'N': '弓',
+            'O': '人', 'P': '心', 'Q': '手', 'R': '口', 'S': '尸', 'T': '廿', 'U': '山',
+            'V': '女', 'W': '田', 'X': '難', 'Y': '卜', 'Z': '重'
+        };
+
+        const QUESTIONS = [
+            // --- 🌿 自然 (Nature) ---
+            { category: "nature", char: "明", code: "AB", first: "A", last: "B", hint: "日月為明", decoys: ["木", "目", "田"] },
+            { category: "nature", char: "林", code: "DD", first: "D", last: "D", hint: "雙木成林", decoys: ["水", "火", "大"] },
+            { category: "nature", char: "早", code: "AJ", first: "A", last: "J", hint: "太陽出來十點了", decoys: ["口", "田", "甲"] },
+            { category: "nature", char: "花", code: "TP", first: "T", last: "P", hint: "草(廿)字頭，變化(化)的心", decoys: ["木", "草", "火"] },
+            { category: "nature", char: "海", code: "EY", first: "E", last: "Y", hint: "水(E)流進每(OWY)個角落", decoys: ["河", "洋", "泳"] },
+            { category: "nature", char: "星", code: "AM", first: "A", last: "M", hint: "日(A)生(AHM)萬物", decoys: ["晶", "晨", "光"] },
+            { category: "nature", char: "天", code: "MK", first: "M", last: "K", hint: "一(M)大(K)片天空", decoys: ["夫", "夭", "太"] },
+            { category: "nature", char: "地", code: "GD", first: "G", last: "D", hint: "土(G)地也(PD)是家", decoys: ["池", "他", "場"] },
+
+            // --- 👥 人物 (People) ---
+            { category: "people", char: "想", code: "DP", first: "D", last: "P", hint: "木目在心上", decoys: ["手", "水", "日"] },
+            { category: "people", char: "好", code: "VND", first: "V", last: "D", hint: "女子為好", decoys: ["男", "中", "大"] },
+            { category: "people", char: "休", code: "OD", first: "O", last: "D", hint: "人(O)靠在木(D)旁休息", decoys: ["火", "水", "土"] },
+            { category: "people", char: "你", code: "OF", first: "O", last: "F", hint: "人(O)爾(NF)相遇", decoys: ["我", "他", "伊"] },
+            { category: "people", char: "我", code: "HI", first: "H", last: "I", hint: "手(Q)持戈(I)保護自己", decoys: ["找", "錢", "代"] },
+            { category: "people", char: "他", code: "OD", first: "O", last: "D", hint: "人(O)也(PD)是他", decoys: ["地", "池", "施"] },
+            { category: "people", char: "看", code: "HU", first: "H", last: "U", hint: "手(Q)放在目(BU)上", decoys: ["目", "見", "着"] },
+            { category: "people", char: "做", code: "OK", first: "O", last: "K", hint: "人(O)故(JK)意做", decoys: ["作", "使", "便"] },
+
+            // --- 🏠 生活 (Life) ---
+            { category: "life", char: "吃", code: "RN", first: "R", last: "N", hint: "口(R)乞(ON)求食物", decoys: ["手", "足", "目"] },
+            { category: "life", char: "喝", code: "RV", first: "R", last: "V", hint: "口(R)渴(APV)喝水", decoys: ["日", "月", "田"] },
+            { category: "life", char: "玩", code: "MU", first: "M", last: "U", hint: "王(MG)元(MMKU)氣", decoys: ["土", "金", "火"] },
+            { category: "life", char: "書", code: "LA", first: "L", last: "A", hint: "聿(LG)日(A)為書", decoys: ["畫", "筆", "看"] },
+            { category: "life", char: "筆", code: "HQ", first: "H", last: "Q", hint: "竹(H)聿(LQ)為筆", decoys: ["毛", "手", "竿"] },
+            { category: "life", char: "家", code: "JO", first: "J", last: "O", hint: "宀(J)下有豕(MSO)", decoys: ["安", "定", "室"] },
+            { category: "life", char: "坐", code: "OG", first: "O", last: "G", hint: "人(O)在土(G)上", decoys: ["座", "土", "位"] },
+            { category: "life", char: "車", code: "JJ", first: "J", last: "J", hint: "十(J)田(W)十(J)", decoys: ["軍", "東", "申"] },
+        ];
+
+        // --- 🎮 Global Game Context ---
+        const THEMES = {
+            FOREST: { id: 'forest', name: '森林', bg: 'bg-green-100', road: 'from-green-800 to-green-600', decor: Trees },
+            SPACE: { id: 'space', name: '太空', bg: 'bg-slate-900', road: 'from-blue-900 to-slate-800', decor: Moon },
+            ANCIENT: { id: 'ancient', name: '古風', bg: 'bg-amber-50', road: 'from-amber-800 to-amber-600', decor: Cloud }
+        };
+
+        const CATEGORIES = [
+            { id: 'all', name: '全部', icon: Star, color: 'bg-purple-100 text-purple-600' },
+            { id: 'nature', name: '自然', icon: Leaf, color: 'bg-green-100 text-green-600' },
+            { id: 'people', name: '人物', icon: Smile, color: 'bg-amber-100 text-amber-600' },
+            { id: 'life', name: '生活', icon: Coffee, color: 'bg-blue-100 text-blue-600' },
+        ];
+
+        // --- 🏃 Component: Runner Game ---
+        const RunnerGame = ({ difficulty, category, onExit, onHome, currentTheme, user }) => {
+            const [score, setScore] = useState(0);
+            const [time, setTime] = useState(0);
+            const [qIndex, setQIndex] = useState(0);
+            const [gameState, setGameState] = useState('running'); // running, paused, bullet_time, win
+            const [userInput, setUserInput] = useState([]);
+            const [feedback, setFeedback] = useState(null);
+            const [message, setMessage] = useState(null);
+            const [qStartTime, setQStartTime] = useState(null);
+            
+            // Filter questions based on category
+            const filteredQuestions = useMemo(() => {
+                if (category === 'all') return QUESTIONS;
+                return QUESTIONS.filter(q => q.category === category);
+            }, [category]);
+
+            // If no questions found (fallback), use all
+            const activeQuestions = filteredQuestions.length > 0 ? filteredQuestions : QUESTIONS;
+            const currentQ = activeQuestions[qIndex];
+            const totalQuestions = activeQuestions.length;
+
+            const charProgress = (qIndex / totalQuestions) * 80;
+            const charPosition = gameState === 'win' ? 90 : 10 + charProgress;
+
+            useEffect(() => {
+                let interval;
+                if (gameState !== 'win' && gameState !== 'menu') {
+                    interval = setInterval(() => {
+                        setTime(t => t + 1);
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [gameState]);
+
+            useEffect(() => {
+                let timer;
+                if (gameState === 'running') {
+                    timer = setTimeout(() => {
+                        setGameState('bullet_time');
+                        setQStartTime(Date.now());
+                    }, 2000);
+                }
+                return () => clearTimeout(timer);
+            }, [gameState, qIndex]);
+
+            const handleOptionClick = (val) => {
+                if (feedback === 'correct') return;
+
+                let isCorrect = false;
+                if (difficulty === 'beginner') isCorrect = val === currentQ.first;
+                else if (difficulty === 'intermediate') isCorrect = val === currentQ.code;
+
+                if (isCorrect) processAnswer(true);
+                else {
+                    AudioEngine.wrong();
+                    setFeedback('wrong');
+                    setMessage(`再試一次！`);
+                    setTimeout(() => { setFeedback(null); setMessage(null); }, 1000);
+                }
+            };
+
+            const handleKeyClick = (key) => {
+                if (gameState !== 'bullet_time') return;
+                if (difficulty !== 'advanced' || feedback === 'correct') return;
+
+                if (userInput.length === 0) {
+                    if (key === currentQ.first) {
+                        AudioEngine.click();
+                        setUserInput([key]);
+                        setMessage(null);
+                        setFeedback(null);
+                        return;
+                    } else {
+                        AudioEngine.wrong();
+                        setFeedback('wrong-first');
+                        setMessage(`首碼錯誤！提示：${currentQ.hint}`);
+                        setUserInput([key]);
+                        setTimeout(() => {
+                            if (userInput.length <= 1) {
+                                setFeedback(null);
+                                setMessage(null);
+                                setUserInput([]);
+                            }
+                        }, 1000);
+                        return;
+                    }
+                }
+
+                if (userInput.length === 1) {
+                    if (key === currentQ.last) {
+                        const finalInput = [...userInput, key];
+                        setUserInput(finalInput);
+                        processAnswer(true);
+                    } else {
+                        AudioEngine.wrong();
+                        setFeedback('wrong-second');
+                        setMessage(`尾碼錯誤！提示：${currentQ.hint}`);
+                        setTimeout(() => { setFeedback(null); setMessage(null); }, 1000);
+                    }
+                }
+            };
+
+            useEffect(() => {
+                if (difficulty !== 'advanced') return;
+                const handlePhysicalKey = (e) => {
+                    const key = e.key.toUpperCase();
+                    if (/^[A-Z]$/.test(key)) handleKeyClick(key);
+                };
+                window.addEventListener('keydown', handlePhysicalKey);
+                return () => window.removeEventListener('keydown', handlePhysicalKey);
+            }, [difficulty, gameState, userInput, feedback]);
+
+            const processAnswer = (isCorrect) => {
+                if (isCorrect) {
+                    AudioEngine.correct();
+                    setFeedback('correct');
+                    setMessage(null);
+                    const timeTaken = (Date.now() - qStartTime) / 1000;
+                    const speedBonus = Math.max(0, Math.floor(50 - timeTaken * 5));
+                    setScore(s => s + 100 + speedBonus);
+                    setTimeout(() => nextLevel(), 1000);
+                }
+            };
+
+            const nextLevel = () => {
+                setFeedback(null);
+                setUserInput([]);
+                if (qIndex < totalQuestions - 1) {
+                    setQIndex(q => q + 1);
+                    setGameState('running');
+                } else {
+                    AudioEngine.win();
+                    setGameState('win');
+                }
+            };
+
+            const renderOptions = () => {
+                if (difficulty === 'advanced') {
+                    const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split('');
+                    return (
+                        <div className="w-full max-w-3xl mx-auto p-2">
+                            <div className="flex justify-center mb-4 space-x-2">
+                                <div className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-2xl font-bold transition-colors duration-300 ${userInput.length >= 1 ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-slate-300 text-slate-300'} ${feedback === 'wrong-first' ? '!bg-red-100 !border-red-500 !text-red-700 animate-shake' : ''}`}>{userInput[0] && KEYBOARD_MAP[userInput[0]]}</div>
+                                <div className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-2xl font-bold bg-white transition-colors duration-300 ${userInput[1] ? 'border-brand-500 text-brand-600' : 'border-slate-300 text-slate-300'} ${feedback === 'wrong-second' ? '!bg-red-100 !border-red-500 !text-red-700 animate-shake' : ''}`}>{userInput[1] && KEYBOARD_MAP[userInput[1]]}</div>
+                            </div>
+                            <div className="keyboard-grid">
+                                {keys.map(k => (
+                                    <button key={k} onClick={() => handleKeyClick(k)} className={`aspect-square rounded-md shadow-sm border flex flex-col items-center justify-center transition-colors ${userInput.length === 0 && userInput.includes(k) && feedback === 'wrong-first' ? 'bg-red-100 border-red-300' : 'bg-white border-slate-200 active:bg-brand-100'} ${userInput.length > 0 && userInput[0] === k ? 'bg-green-50 border-green-200' : ''}`}>
+                                        <span className="text-xs font-bold text-slate-400">{k}</span>
+                                        <span className="text-lg font-bold font-serif text-slate-800">{KEYBOARD_MAP[k]}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                }
+
+                let options = [];
+                if (difficulty === 'beginner') {
+                    options = [
+                        { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true },
+                        { label: `${KEYBOARD_MAP[currentQ.decoys[0] === '木' ? 'D' : currentQ.decoys[0] === '水' ? 'E' : 'F']} (${currentQ.decoys[0] === '木' ? 'D' : currentQ.decoys[0] === '水' ? 'E' : 'F'})`, val: 'X', isCorrect: false },
+                        { label: `${KEYBOARD_MAP[currentQ.decoys[1] === '木' ? 'D' : currentQ.decoys[1] === '水' ? 'E' : 'G']} (${currentQ.decoys[1] === '木' ? 'D' : currentQ.decoys[1] === '水' ? 'E' : 'G'})`, val: 'Y', isCorrect: false }
+                    ];
+                    // Simple shuffle for variety
+                    options.sort(() => Math.random() - 0.5);
+                } else {
+                    options = [
+                        { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true },
+                        { label: `${KEYBOARD_MAP[currentQ.first]} + 木`, val: currentQ.first+'D', isCorrect: false },
+                        { label: `山 + ${KEYBOARD_MAP[currentQ.last]}`, val: 'U'+currentQ.last, isCorrect: false }
+                    ];
+                    options.sort(() => Math.random() - 0.5);
+                }
+                
+                return (
+                    <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mx-auto">
+                        {options.map((opt, i) => (
+                            <button key={i} onClick={() => handleOptionClick(opt.val)} className={`relative py-6 rounded-2xl text-xl font-bold shadow-lg transform transition-all active:scale-95 flex items-center justify-center overflow-hidden ${feedback === 'correct' && opt.isCorrect ? 'bg-green-500 text-white' : 'bg-white text-slate-800 hover:bg-brand-50'} ${feedback === 'wrong' && !opt.isCorrect ? 'opacity-50 bg-red-50' : ''}`}>
+                                <span className={`absolute left-3 top-2 text-2xl font-black opacity-20 ${feedback === 'correct' && opt.isCorrect ? 'text-white' : 'text-slate-900'}`}>{String.fromCharCode(65 + i)}</span>
+                                <span>{opt.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                );
+            };
+
+            if (gameState === 'win') {
+                return (
+                    <div className="absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center text-white p-8">
+                        <LucideIcon icon={Trophy} size={64} className="text-yellow-400 mb-4 animate-bounce" />
+                        <h2 className="text-4xl font-bold mb-2">大冒險完成！</h2>
+                        <p className="text-xl mb-2">得分: {score}</p>
+                        <p className="text-lg text-slate-300 mb-8">總時間: {Math.floor(time / 60)}分 {time % 60}秒</p>
+                        <div className="flex space-x-4">
+                            <button onClick={onExit} className="bg-slate-500 hover:bg-slate-600 px-6 py-3 rounded-full font-bold">返回選單</button>
+                            <button onClick={onHome} className="bg-brand-500 hover:bg-brand-600 px-6 py-3 rounded-full font-bold">回主頁</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className={`h-full w-full flex flex-col ${currentTheme.bg} overflow-hidden relative`}>
+                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-30 pointer-events-none">
+                        <div className="flex items-center space-x-2 pointer-events-auto">
+                             <button onClick={onExit} className="bg-white/80 p-2 rounded-full shadow-md mr-2"><LucideIcon icon={ArrowLeft} size={20} /></button>
+                             <div className="flex items-center space-x-2 bg-white/80 backdrop-blur px-3 py-1 rounded-full shadow-sm min-w-[80px]">
+                                <LucideIcon icon={Timer} className="text-blue-500 fill-current" size={18} />
+                                <span className="font-bold text-slate-800 font-mono">{Math.floor(time / 60).toString().padStart(2, '0')}:{ (time % 60).toString().padStart(2, '0') }</span>
+                            </div>
+                            <div className="flex items-center space-x-2 bg-white/80 backdrop-blur px-3 py-1 rounded-full shadow-sm">
+                                <LucideIcon icon={Star} className="text-yellow-500 fill-current" size={18} />
+                                <span className="font-bold text-slate-800">{score}</span>
+                            </div>
+                        </div>
+                        <button onClick={onHome} className="bg-brand-500 text-white p-2 rounded-full shadow-md pointer-events-auto hover:bg-brand-600 transition-colors"><LucideIcon icon={Home} size={20} /></button>
+                    </div>
+
+                    <div className="relative h-[45%] flex flex-col justify-end overflow-hidden">
+                        <div className="absolute top-10 right-10 text-slate-400/50"><LucideIcon icon={currentTheme.decor} size={64} /></div>
+                        <div className="absolute top-20 left-10 text-slate-400/30"><LucideIcon icon={Cloud} size={48} /></div>
+                        <div className={`absolute bottom-0 w-full h-1/2 bg-gradient-to-b ${currentTheme.road} perspective-road flex justify-center`}><div className={`w-4 h-full bg-white/30 ${gameState === 'running' ? 'animate-pulse' : ''}`}></div></div>
+                        <div className="absolute bottom-10 right-[5%] z-10 flex flex-col items-center"><div className="h-24 w-2 bg-slate-400"></div><LucideIcon icon={Flag} size={48} className="text-red-500 fill-current" /></div>
+                        <div className={`absolute bottom-4 w-full flex justify-between px-10 ${gameState === 'running' ? 'animate-run' : ''} opacity-50`}><LucideIcon icon={Trees} size={32} className="text-green-800" /><LucideIcon icon={Trees} size={32} className="text-green-800" /></div>
+                        
+                        <div className="absolute bottom-8 z-20 transition-all duration-1000 ease-in-out" style={{ left: `${charPosition}%` }}>
+                            <div className="relative transform -translate-x-1/2">
+                                <motion.div animate={gameState === 'running' ? { y: [0, -10, 0] } : { y: 0 }} transition={{ repeat: Infinity, duration: 0.5 }}>
+                                    <div style={{ transform: 'scaleX(-1)', display: 'inline-block' }} className={`text-6xl filter drop-shadow-2xl transition-all ${feedback === 'wrong' ? 'animate-shake grayscale' : ''}`}>{feedback === 'wrong' ? '😵' : '🏃'}</div>
+                                </motion.div>
+                                <div className="w-16 h-4 bg-black/20 rounded-full mx-auto blur-sm mt-[-5px]"></div>
+                                <AnimatePresence>
+                                    <motion.div key={qIndex} initial={{ scale: 0, y: 50, opacity: 0 }} animate={{ scale: gameState === 'bullet_time' ? 1 : 0.2, y: gameState === 'bullet_time' ? -100 : 20, opacity: gameState === 'bullet_time' ? 1 : 0 }} transition={{ type: 'spring', damping: 20 }} className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-30 mb-12">
+                                        <div className={`bg-white border-8 border-slate-800 rounded-2xl w-32 h-32 flex flex-col items-center justify-center shadow-2xl relative ${gameState === 'running' ? 'animate-bounce' : ''}`}>
+                                            <span className="text-6xl font-serif font-black text-slate-900">{currentQ ? currentQ.char : '?'}</span>
+                                            {gameState === 'bullet_time' && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-14 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap shadow-lg border-2 border-yellow-500">{difficulty === 'beginner' ? '找首碼！' : '解碼！'}</motion.div>}
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 bg-white relative z-20 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] rounded-t-[2.5rem] p-6 flex flex-col justify-start pt-12">
+                         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-16 h-1.5 bg-slate-200 rounded-full"></div>
+                        {gameState === 'bullet_time' ? (
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full flex flex-col items-center">
+                                <h3 className={`font-bold mb-6 text-sm tracking-wider uppercase transition-colors duration-300 ${feedback?.includes('wrong') ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>
+                                    {message || (difficulty === 'advanced' ? (userInput.length > 0 ? '請輸入尾碼' : '請輸入首碼') : '選擇正確部件')}
+                                </h3>
+                                {renderOptions()}
+                            </motion.div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-300">
+                                <div className="animate-pulse flex flex-col items-center"><LucideIcon icon={Rocket} size={48} className="mb-4 text-slate-200" /><span className="font-bold tracking-widest text-lg">奔跑中...</span></div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 🧩 Component: Factory Game ---
+        const FactoryGame = ({ onExit, onHome, user }) => {
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [assembled, setAssembled] = useState([null, null]); // [Left/Top part, Right/Bottom part]
+            const [isCompleted, setIsCompleted] = useState(false);
+            
+            // For factory, we just use first few questions or random ones
+            const currentQ = QUESTIONS[currentQIndex % QUESTIONS.length];
+            
+            const pool = useMemo(() => {
+                const parts = currentQ.parts.map(p => ({ ...p, id: Math.random() }));
+                const decoys = currentQ.decoys.map(d => ({ char: d, code: '?', id: Math.random() }));
+                return [...parts, ...decoys].sort(() => Math.random() - 0.5);
+            }, [currentQ]);
+
+            const handleSelectRadical = (part) => {
+                if (isCompleted) return;
+                const newAssembled = [...assembled];
+                if (!newAssembled[0]) newAssembled[0] = part;
+                else if (!newAssembled[1]) newAssembled[1] = part;
+                else return;
+                setAssembled(newAssembled);
+                AudioEngine.click();
+                if (newAssembled[0] && newAssembled[1]) setTimeout(() => checkAssembly(newAssembled), 300);
+            };
+
+            const checkAssembly = (parts) => {
+                const requiredChars = currentQ.parts.map(p => p.char).sort();
+                const userChars = parts.map(p => p.char).sort();
+                if (JSON.stringify(requiredChars) === JSON.stringify(userChars)) {
+                    setIsCompleted(true);
+                    AudioEngine.correct();
+                } else {
+                    AudioEngine.wrong();
+                    setTimeout(() => setAssembled([null, null]), 500);
+                }
+            };
+
+            const nextChar = () => {
+                if (currentQIndex < QUESTIONS.length - 1) {
+                    setCurrentQIndex(prev => prev + 1);
+                    setAssembled([null, null]);
+                    setIsCompleted(false);
+                } else {
+                    alert("工廠任務全部完成！");
+                    onExit();
+                }
+            };
+
+            const resetSlot = (index) => {
+                if (isCompleted) return;
+                const newAssembled = [...assembled];
+                newAssembled[index] = null;
+                setAssembled(newAssembled);
+            };
+
+            return (
+                <div className="h-full w-full bg-slate-100 flex flex-col p-4 relative">
+                    <div className="flex justify-between items-center mb-4">
+                        <button onClick={onExit} className="p-2 bg-white rounded-full shadow-sm z-10 hover:bg-slate-50"><LucideIcon icon={ArrowLeft} /></button>
+                        <button onClick={onHome} className="p-2 bg-brand-500 text-white rounded-full shadow-sm z-10 hover:bg-brand-600"><LucideIcon icon={Home} /></button>
+                    </div>
+                    <div className="text-center mt-2 mb-6">
+                        <h2 className="text-2xl font-bold text-slate-700 flex items-center justify-center"><LucideIcon icon={Box} className="mr-2 text-brand-500" /> 速成拼字工廠</h2>
+                        <p className="text-slate-500 text-sm">請將部件組合成正確的字</p>
+                    </div>
+                    <div className="flex-1 flex flex-col md:flex-row gap-8 max-w-4xl mx-auto w-full">
+                        <div className="flex-1 bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-400 mb-4 uppercase tracking-wider">部件倉庫</h3>
+                            <div className="grid grid-cols-3 gap-4">
+                                {pool.map((p) => (
+                                    <motion.button key={p.id} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleSelectRadical(p)} className="aspect-square bg-brand-50 rounded-xl border-2 border-brand-100 flex items-center justify-center text-3xl font-serif text-brand-900 font-bold hover:bg-brand-100 hover:border-brand-300 transition-colors">{p.char}</motion.button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-slate-200 rounded-3xl p-6 shadow-inner flex flex-col items-center justify-center relative overflow-hidden">
+                            {isCompleted && <div className="absolute inset-0 bg-yellow-400/20 z-0 animate-pulse"></div>}
+                            <div className={`w-64 h-64 border-4 border-dashed border-slate-400 rounded-2xl flex ${currentQ.structure === 'LR' ? 'flex-row' : 'flex-col'} p-2 bg-white/50 backdrop-blur z-10 transition-all ${isCompleted ? 'border-yellow-400 border-solid shadow-[0_0_30px_rgba(250,204,21,0.5)]' : ''}`}>
+                                <div onClick={() => resetSlot(0)} className="flex-1 border-2 border-slate-200 m-1 rounded-lg flex items-center justify-center text-5xl font-serif text-slate-800 cursor-pointer hover:bg-red-50 transition-colors">{assembled[0] ? assembled[0].char : <span className="opacity-20">+</span>}</div>
+                                <div onClick={() => resetSlot(1)} className="flex-1 border-2 border-slate-200 m-1 rounded-lg flex items-center justify-center text-5xl font-serif text-slate-800 cursor-pointer hover:bg-red-50 transition-colors">{assembled[1] ? assembled[1].char : <span className="opacity-20">+</span>}</div>
+                            </div>
+                            <AnimatePresence>
+                                {isCompleted && (
+                                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 text-center">
+                                        <div className="text-4xl font-bold text-slate-800 mb-2">{currentQ.char}</div>
+                                        <div className="text-brand-600 font-mono text-xl font-bold mb-4">{currentQ.first} + {currentQ.last}</div>
+                                        <button onClick={nextChar} className="px-6 py-2 bg-brand-500 text-white rounded-full font-bold shadow-lg hover:bg-brand-600">下一題</button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 📱 Main App Container ---
+        const App = () => {
+            const [view, setView] = useState('home'); // home, mode_select, category_select, game_runner, game_factory
+            const [userName, setUserName] = useState('');
+            const [runnerConfig, setRunnerConfig] = useState({ difficulty: 'beginner', category: 'all', theme: THEMES.FOREST });
+
+            const goHome = () => setView('home');
+
+            // 1. Home Screen
+            if (view === 'home') {
+                return (
+                    <div className="h-full w-full bg-brand-50 flex flex-col items-center justify-center p-6">
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center">
+                            <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-600"><LucideIcon icon={Rocket} size={40} /></div>
+                            <h1 className="text-3xl font-black text-slate-800 mb-2">歡迎來到速成世界</h1>
+                            <p className="text-slate-500 mb-8">請輸入你的名字開始冒險</p>
+                            <div className="relative mb-6">
+                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"><LucideIcon icon={User} size={20} /></div>
+                                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="你的名字是？" className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-brand-500 focus:outline-none text-lg font-bold text-slate-700 transition-colors" />
+                            </div>
+                            <button disabled={!userName.trim()} onClick={() => { AudioEngine.click(); setView('mode_select'); }} className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-4 rounded-xl font-black text-lg shadow-lg shadow-brand-500/30 transition-all active:scale-95">開始遊戲</button>
+                        </motion.div>
+                        <div className="mt-8 text-slate-400 text-sm font-medium">© 2025 WMC Education</div>
+                    </div>
+                );
+            }
+
+            // 2. Mode Selection
+            if (view === 'mode_select') {
+                return (
+                    <div className="h-full w-full bg-slate-50 flex flex-col p-6 overflow-y-auto">
+                        <div className="flex justify-between items-center mb-8 shrink-0">
+                            <div><h2 className="text-2xl font-bold text-slate-800">你好，{userName} 👋</h2><p className="text-slate-500">今天想玩什麼？</p></div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setView('home')} className="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 shadow-sm"><LucideIcon icon={ArrowLeft} /></button>
+                                <button onClick={goHome} className="p-2 bg-brand-500 text-white rounded-full hover:bg-brand-600 shadow-sm"><LucideIcon icon={Home} /></button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full pb-6">
+                            <motion.div whileHover={{ y: -5 }} className="bg-white rounded-3xl p-6 shadow-lg border border-slate-100 flex flex-col h-full relative overflow-hidden group cursor-pointer"> 
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-bl-full -mr-10 -mt-10 z-0"></div>
+                                <div className="z-10">
+                                    <div className="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center mb-4"><LucideIcon icon={Zap} size={32} /></div>
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">速成大冒險</h3>
+                                    <p className="text-slate-500 mb-6">跑酷挑戰！在奔跑中快速反應，訓練首碼與拆字速度。</p>
+                                    <div className="space-y-2">
+                                        <button onClick={() => { setRunnerConfig({...runnerConfig, difficulty: 'beginner'}); setView('category_select'); }} className="w-full py-3 bg-green-50 text-green-700 font-bold rounded-xl hover:bg-green-100 text-left px-4 flex justify-between items-center transition-colors"><span>🟢 初階 (首碼)</span> <LucideIcon icon={Play} size={16} /></button>
+                                        <button onClick={() => { setRunnerConfig({...runnerConfig, difficulty: 'intermediate'}); setView('category_select'); }} className="w-full py-3 bg-yellow-50 text-yellow-700 font-bold rounded-xl hover:bg-yellow-100 text-left px-4 flex justify-between items-center transition-colors"><span>🟡 中階 (組合)</span> <LucideIcon icon={Play} size={16} /></button>
+                                        <button onClick={() => { setRunnerConfig({...runnerConfig, difficulty: 'advanced'}); setView('category_select'); }} className="w-full py-3 bg-red-50 text-red-700 font-bold rounded-xl hover:bg-red-100 text-left px-4 flex justify-between items-center transition-colors"><span>🔴 高階 (鍵盤)</span> <LucideIcon icon={Keyboard} size={16} /></button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                            <motion.div whileHover={{ y: -5 }} className="bg-white rounded-3xl p-6 shadow-lg border border-slate-100 flex flex-col h-full relative overflow-hidden group cursor-pointer" onClick={() => setView('game_factory')}>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-bl-full -mr-10 -mt-10 z-0"></div>
+                                <div className="z-10 flex-1 flex flex-col">
+                                    <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-4"><LucideIcon icon={LayoutGrid} size={32} /></div>
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">拼字工廠</h3>
+                                    <p className="text-slate-500 mb-6">像樂高一樣組合漢字！理解部件結構與組合邏輯。</p>
+                                    <div className="mt-auto">
+                                        <button className="w-full py-4 bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 hover:bg-brand-600 flex items-center justify-center transition-colors">進入工廠 <LucideIcon icon={ArrowLeft} className="rotate-180 ml-2" size={20} /></button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 2.5 Category Selection
+            if (view === 'category_select') {
+                return (
+                    <div className="h-full w-full bg-slate-50 flex flex-col p-6 overflow-y-auto">
+                        <div className="flex justify-between items-center mb-8 shrink-0">
+                            <div><h2 className="text-2xl font-bold text-slate-800">選擇挑戰範疇</h2><p className="text-slate-500">你想練習哪一類的文字？</p></div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setView('mode_select')} className="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 shadow-sm"><LucideIcon icon={ArrowLeft} /></button>
+                                <button onClick={goHome} className="p-2 bg-brand-500 text-white rounded-full hover:bg-brand-600 shadow-sm"><LucideIcon icon={Home} /></button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto w-full">
+                            {CATEGORIES.map(cat => (
+                                <motion.button
+                                    key={cat.id}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => { setRunnerConfig({...runnerConfig, category: cat.id}); setView('game_runner'); }}
+                                    className={`p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-brand-200 flex items-center space-x-4 transition-all bg-white`}
+                                >
+                                    <div className={`p-4 rounded-full ${cat.color} bg-opacity-20`}>
+                                        <LucideIcon icon={cat.icon} size={32} />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-xl font-bold text-slate-800">{cat.name}</h3>
+                                        <p className="text-sm text-slate-400">點擊開始挑戰</p>
+                                    </div>
+                                </motion.button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            // 3. Game Views
+            if (view === 'game_runner') {
+                return <RunnerGame user={userName} category={runnerConfig.category} difficulty={runnerConfig.difficulty} currentTheme={runnerConfig.theme} onExit={() => setView('category_select')} onHome={goHome} />;
+            }
+
+            if (view === 'game_factory') {
+                return <FactoryGame user={userName} onExit={() => setView('mode_select')} onHome={goHome} />;
+            }
+
+            return null;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
