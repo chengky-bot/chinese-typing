@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>速成大冒險 | Quick Input Adventure</title>
+    <title>速成大冒險 | Quick Input Adventure V8</title>
     
     <!-- Core Dependencies -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,6 +21,7 @@
                     colors: {
                         'brand': { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7' },
                         'magic': { 900: '#2e1065', 800: '#4c1d95', 600: '#7c3aed', 500: '#8b5cf6', 300: '#c4b5fd', 100: '#ede9fe' },
+                        'danger': { 900: '#450a0a', 500: '#ef4444' }
                     },
                     fontFamily: {
                         'serif': ['"Noto Serif TC"', '"Songti TC"', 'serif'],
@@ -28,18 +29,12 @@
                         'mono': ['"Noto Sans Mono"', 'monospace'],
                     },
                     animation: {
-                        'run': 'run 0.6s steps(4) infinite',
-                        'road': 'road 2s linear infinite',
-                        'float': 'float 3s ease-in-out infinite',
                         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
                         'pulse-glow': 'pulseGlow 2s infinite',
                         'damage-flash': 'damageFlash 0.3s ease-in-out',
                         'float-up': 'floatUp 1s ease-out forwards',
                     },
                     keyframes: {
-                        run: { '0%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-5px)' }, '100%': { transform: 'translateY(0)' } },
-                        road: { '0%': { backgroundPosition: '0 0' }, '100%': { backgroundPosition: '-100% 0' } },
-                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-15px)' } },
                         shake: { '10%, 90%': { transform: 'translate3d(-2px, 0, 0)' }, '20%, 80%': { transform: 'translate3d(4px, 0, 0)' }, '30%, 50%, 70%': { transform: 'translate3d(-6px, 0, 0)' }, '40%, 60%': { transform: 'translate3d(6px, 0, 0)' } },
                         pulseGlow: { '0%, 100%': { opacity: 1, filter: 'brightness(1)' }, '50%': { opacity: 0.8, filter: 'brightness(1.3)' } },
                         damageFlash: { '0%, 100%': { backgroundColor: 'transparent' }, '50%': { backgroundColor: 'rgba(239, 68, 68, 0.3)' } },
@@ -56,7 +51,6 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .keyboard-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
-        .perspective-road { transform: perspective(500px) rotateX(40deg); transform-origin: bottom; }
     </style>
 </head>
 <body>
@@ -70,7 +64,7 @@
             Settings, Volume2, ArrowLeft, Play, User, Trophy, Star, Zap, LayoutGrid, Rocket, Heart, AlertTriangle, 
             CheckCircle, RefreshCw, Keyboard, MousePointer2, Box, Home, Trees, Cloud, Moon, Flag, Timer, Leaf, 
             Smile, Coffee, BookOpen, Sword, Shield, Ghost, Sparkles, Skull, Flame, Plus, Crown, Gift, Hammer, 
-            Droplets, Wind, Eye
+            Droplets, Wind, Eye, Save, Upload, Download, X, Coins, GraduationCap
         } = icons;
 
         const LucideIcon = ({ icon, size = 24, className = "" }) => icon ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icon.map(([tag, attrs], i) => React.createElement(tag, { ...attrs, key: i }))}</svg> : null;
@@ -94,14 +88,13 @@
             attack: function() { this.playTone(100, 'square', 0.1, 0.3); setTimeout(() => this.playTone(50, 'sawtooth', 0.2, 0.3), 50); }, 
             crit: function() { this.playTone(600, 'square', 0.1, 0.4); setTimeout(() => this.playTone(1200, 'square', 0.2, 0.4), 100); }, 
             hit: function() { this.playTone(80, 'sawtooth', 0.2, 0.3); },
-            heal: function() { this.playTone(400, 'sine', 0.5, 0.2); setTimeout(() => this.playTone(600, 'sine', 0.5, 0.2), 200); },
-            block: function() { this.playTone(100, 'square', 0.1, 0.3); },
+            skill: function() { [300, 400, 500].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.2), i * 50)); },
             levelUp: function() { [440, 554, 659, 880, 1108].forEach((f, i) => setTimeout(() => this.playTone(f, 'triangle', 0.3), i * 100)); },
             win: function() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.2), i * 150)); },
             lose: function() { [300, 250, 200].forEach((f, i) => setTimeout(() => this.playTone(f, 'sawtooth', 0.3), i * 300)); }
         };
 
-        // --- 📚 Data ---
+        // --- 📚 Data & Utils ---
         const KEYBOARD_MAP = { 'A': '日', 'B': '月', 'C': '金', 'D': '木', 'E': '水', 'F': '火', 'G': '土', 'H': '竹', 'I': '戈', 'J': '十', 'K': '大', 'L': '中', 'M': '一', 'N': '弓', 'O': '人', 'P': '心', 'Q': '手', 'R': '口', 'S': '尸', 'T': '廿', 'U': '山', 'V': '女', 'W': '田', 'X': '難', 'Y': '卜', 'Z': '重' };
         
         const QUESTIONS = [
@@ -110,19 +103,20 @@
             { category: "nature", char: "早", code: "AJ", first: "A", last: "J", hint: "太陽出來十點了", decoys: [{char:"口",code:"R"}, {char:"田",code:"W"}, {char:"甲",code:"WL"}] },
             { category: "nature", char: "花", code: "TP", first: "T", last: "P", hint: "草(廿)字頭，變化(化)的心", decoys: [{char:"木",code:"D"}, {char:"草",code:"TA"}, {char:"火",code:"F"}] },
             { category: "nature", char: "海", code: "EY", first: "E", last: "Y", hint: "水(E)流進每(OWY)個角落", decoys: [{char:"河",code:"EMR"}, {char:"洋",code:"ETQ"}, {char:"泳",code:"EINO"}] },
+            { category: "nature", char: "星", code: "AM", first: "A", last: "M", hint: "日(A)生(AHM)萬物", decoys: [{char:"晶",code:"AAA"}, {char:"晨",code:"AMMV"}, {char:"光",code:"FMU"}] },
+            { category: "nature", char: "天", code: "MK", first: "M", last: "K", hint: "一(M)大(K)片天空", decoys: [{char:"夫",code:"QO"}, {char:"夭",code:"HK"}, {char:"太",code:"KI"}] },
+            { category: "nature", char: "地", code: "GD", first: "G", last: "D", hint: "土(G)地也(PD)是家", decoys: [{char:"池",code:"EPD"}, {char:"他",code:"OPD"}, {char:"場",code:"GASH"}] },
             { category: "people", char: "想", code: "DP", first: "D", last: "P", hint: "木目在心上", decoys: [{char:"手",code:"Q"}, {char:"水",code:"E"}, {char:"日",code:"A"}] },
             { category: "people", char: "好", code: "VND", first: "V", last: "D", hint: "女子為好", decoys: [{char:"男",code:"WKS"}, {char:"中",code:"L"}, {char:"大",code:"K"}] },
             { category: "people", char: "休", code: "OD", first: "O", last: "D", hint: "人(O)靠在木(D)旁休息", decoys: [{char:"火",code:"F"}, {char:"水",code:"E"}, {char:"土",code:"G"}] },
+            { category: "people", char: "你", code: "OF", first: "O", last: "F", hint: "人(O)爾(NF)相遇", decoys: [{char:"我",code:"HI"}, {char:"他",code:"OD"}, {char:"伊",code:"OSK"}] },
+            { category: "people", char: "我", code: "HI", first: "H", last: "I", hint: "手(Q)持戈(I)保護自己", decoys: [{char:"找",code:"QI"}, {char:"錢",code:"CII"}, {char:"代",code:"OIP"}] },
             { category: "life", char: "吃", code: "RN", first: "R", last: "N", hint: "口(R)乞(ON)求食物", decoys: [{char:"手",code:"Q"}, {char:"足",code:"RYO"}, {char:"目",code:"BU"}] },
             { category: "life", char: "喝", code: "RV", first: "R", last: "V", hint: "口(R)渴(APV)喝水", decoys: [{char:"日",code:"A"}, {char:"月",code:"B"}, {char:"田",code:"W"}] },
             { category: "life", char: "玩", code: "MU", first: "M", last: "U", hint: "王(MG)元(MMKU)氣", decoys: [{char:"土",code:"G"}, {char:"金",code:"C"}, {char:"火",code:"F"}] },
+            { category: "life", char: "書", code: "LA", first: "L", last: "A", hint: "聿(LG)日(A)為書", decoys: [{char:"畫",code:"LGW"}, {char:"筆",code:"HLQ"}, {char:"看",code:"HBU"}] },
+            { category: "life", char: "家", code: "JO", first: "J", last: "O", hint: "宀(J)下有豕(MSO)", decoys: [{char:"安",code:"JV"}, {char:"定",code:"JMO"}, {char:"室",code:"JMIG"}] },
         ];
-
-        const THEMES = {
-            FOREST: { id: 'forest', name: '森林', bg: 'bg-green-100', road: 'from-green-800 to-green-600', decor: Trees },
-            SPACE: { id: 'space', name: '太空', bg: 'bg-slate-900', road: 'from-blue-900 to-slate-800', decor: Moon },
-            ANCIENT: { id: 'ancient', name: '古風', bg: 'bg-amber-50', road: 'from-amber-800 to-amber-600', decor: Cloud }
-        };
 
         const CATEGORIES = [
             { id: 'all', name: '全部', icon: Star, color: 'bg-purple-100 text-purple-600' },
@@ -131,85 +125,105 @@
             { id: 'life', name: '生活', icon: Coffee, color: 'bg-blue-100 text-blue-600' },
         ];
 
-        // 🛡️ Roguelike Artifacts
+        // 🛡️ Enhanced Roguelike Artifacts
         const RPG_ARTIFACTS = [
-            { id: 'vamp_tooth', name: '吸血鬼之牙', icon: Droplets, desc: '攻擊回復 10% 傷害血量', effect: (p) => ({ ...p, lifesteal: p.lifesteal + 0.1, maxHp: p.maxHp + 10 }) },
-            { id: 'sharp_stone', name: '雷神磨刀石', icon: Zap, desc: '暴擊率 +20%', effect: (p) => ({ ...p, critChance: p.critChance + 0.2, atk: p.atk + 5 }) },
-            { id: 'spike_shield', name: '荊棘盾牌', icon: Shield, desc: '反彈 20% 受到傷害', effect: (p) => ({ ...p, thorns: p.thorns + 0.2, maxHp: p.maxHp + 30 }) },
-            { id: 'wind_boots', name: '風之靴', icon: Wind, desc: '閃避率 +15%', effect: (p) => ({ ...p, dodge: p.dodge + 0.15 }) },
-            { id: 'giant_belt', name: '巨人腰帶', icon: User, desc: '最大 HP +50', effect: (p) => ({ ...p, maxHp: p.maxHp + 50, hp: p.hp + 50 }) },
-            { id: 'berserk_axe', name: '狂戰士之斧', icon: Hammer, desc: '攻擊力 +15', effect: (p) => ({ ...p, atk: p.atk + 15 }) },
+            // Tier 1 (Common)
+            { id: 'wand_1', name: '學徒法杖', type: 'weapon', val: 5, tier: 1, icon: Zap, desc: '攻擊力 +5', effect: (p) => ({ ...p, atk: p.atk + 5 }) },
+            { id: 'robe_1', name: '布衣', type: 'armor', val: 20, tier: 1, icon: Shield, desc: '最大 HP +20', effect: (p) => ({ ...p, maxHp: p.maxHp + 20, hp: p.hp + 20 }) },
+            { id: 'ring_1', name: '力量戒指', type: 'accessory', val: 10, tier: 1, icon: Star, desc: '攻擊力 +10', effect: (p) => ({ ...p, atk: p.atk + 10 }) },
+            { id: 'boots_1', name: '輕靈之靴', type: 'accessory', val: 0.05, tier: 1, icon: Wind, desc: '閃避率 +5%', effect: (p) => ({ ...p, dodge: p.dodge + 0.05 }) },
+            // Tier 2 (Rare)
+            { id: 'vamp_tooth', name: '吸血鬼之牙', type: 'special', val: 0.1, tier: 2, icon: Droplets, desc: '吸血 +10%', effect: (p) => ({ ...p, lifesteal: p.lifesteal + 0.1 }) },
+            { id: 'sharp_stone', name: '雷神磨刀石', type: 'special', val: 0.2, tier: 2, icon: Zap, desc: '暴擊率 +20%', effect: (p) => ({ ...p, critChance: p.critChance + 0.2 }) },
+            { id: 'spike_shield', name: '荊棘盾牌', type: 'special', val: 0.2, tier: 2, icon: Shield, desc: '反傷 +20%', effect: (p) => ({ ...p, thorns: p.thorns + 0.2, maxHp: p.maxHp + 30 }) },
+            { id: 'hourglass', name: '時光沙漏', type: 'special', val: 1, tier: 2, icon: Timer, desc: '技能冷卻 -1回合', effect: (p) => ({ ...p, cdr: p.cdr + 1 }) },
+            // Tier 3 (Legendary)
+            { id: 'cursed_mask', name: '詛咒面具', type: 'special', val: 0, tier: 3, icon: Skull, desc: '攻擊力 +50%, 最大 HP -20%', effect: (p) => ({ ...p, atk: Math.floor(p.atk * 1.5), maxHp: Math.floor(p.maxHp * 0.8), hp: Math.min(p.hp, Math.floor(p.maxHp * 0.8)) }) },
+            { id: 'titan_heart', name: '泰坦之心', type: 'special', val: 0, tier: 3, icon: Heart, desc: '最大 HP +100', effect: (p) => ({ ...p, maxHp: p.maxHp + 100, hp: p.hp + 100 }) },
+            { id: 'greedy_pot', name: '貪婪之壺', type: 'special', val: 0, tier: 3, icon: Coins, desc: '獲得 100 EXP', effect: (p) => ({ ...p, exp: p.exp + 100 }) },
         ];
 
-        // 👾 Monster Types
+        // 👾 Monster Scaling
         const MONSTER_TYPES = [
             { name: '史萊姆', hpMod: 0.8, atkMod: 0.8, speedMod: 0.8, color: 'text-green-400', icon: Ghost },
             { name: '蝙蝠', hpMod: 0.6, atkMod: 1.2, speedMod: 1.5, color: 'text-purple-400', icon: Wind },
-            { name: '石像鬼', hpMod: 1.5, atkMod: 1.2, speedMod: 0.6, color: 'text-stone-400', icon: Shield },
+            { name: '石像鬼', hpMod: 1.5, atkMod: 1.0, speedMod: 0.6, color: 'text-stone-400', icon: Shield },
             { name: '暗影刺客', hpMod: 0.8, atkMod: 1.5, speedMod: 1.2, color: 'text-red-400', icon: Sword },
-            { name: '字靈龍', hpMod: 2.0, atkMod: 1.5, speedMod: 1.0, color: 'text-yellow-400', icon: Crown }, // Boss
-        ];
-
-        const RPG_SKILLS = [
-            { id: 'heal', name: '治癒術', cd: 3, icon: Heart, color: 'bg-green-500', effect: (p) => ({ ...p, hp: Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.3)), log: `施放治癒術！回復 ${Math.floor(p.maxHp * 0.3)} HP` }) },
-            { id: 'burst', name: '爆裂魔法', cd: 5, icon: Flame, color: 'bg-red-500', effect: (p) => ({ ...p, bonusDmg: p.atk * 2, log: '爆裂魔法蓄力！下擊傷害 200%！' }) },
-            { id: 'guard', name: '鐵壁', cd: 4, icon: Shield, color: 'bg-blue-500', effect: (p) => ({ ...p, shield: 50, log: '獲得 50 點護盾！' }) },
+            // Bosses
+            { name: '字靈龍', hpMod: 2.5, atkMod: 1.5, speedMod: 1.0, color: 'text-yellow-400', icon: Crown, isBoss: true },
+            { name: '深淵領主', hpMod: 3.0, atkMod: 1.8, speedMod: 0.8, color: 'text-rose-500', icon: Skull, isBoss: true },
         ];
 
         // --- ⚔️ RPG Game Component ---
-        const RPGGame = ({ difficulty, category, onExit, onHome, user }) => {
-            // Player State with Roguelike Stats
-            const [player, setPlayer] = useState({
+        const RPGGame = ({ difficulty, category, onExit, onHome, onLoadGame, initialData }) => {
+            // Player State
+            const [player, setPlayer] = useState(initialData?.player || {
                 hp: 100, maxHp: 100, atk: 20, level: 1, exp: 0, maxExp: 100,
-                critChance: 0.1, critMult: 1.5, lifesteal: 0, thorns: 0, dodge: 0, shield: 0,
+                critChance: 0.1, critMult: 1.5, lifesteal: 0, thorns: 0, dodge: 0, shield: 0, cdr: 0,
                 bonusDmg: 0, combo: 0,
-                skills: RPG_SKILLS.map(s => ({...s, currentCd: 0})),
-                artifacts: []
+                skills: [{ id: 'heal', name: '治癒術', baseCd: 4, currentCd: 0, icon: Heart, color: 'bg-green-500' }, { id: 'burst', name: '爆裂魔法', baseCd: 6, currentCd: 0, icon: Flame, color: 'bg-red-500' }, { id: 'guard', name: '鐵壁', baseCd: 5, currentCd: 0, icon: Shield, color: 'bg-blue-500' }],
+                artifacts: [],
+                floor: 1
             });
             
-            const [monster, setMonster] = useState({ hp: 100, maxHp: 100, name: '史萊姆', type: MONSTER_TYPES[0] });
+            const [monster, setMonster] = useState({ hp: 100, maxHp: 100, name: '亂碼怪獸', type: MONSTER_TYPES[0] });
             const [attackGauge, setAttackGauge] = useState(0); 
             const [qIndex, setQIndex] = useState(0);
-            const [turn, setTurn] = useState('player'); // player, reward, win, lose
+            const [turn, setTurn] = useState('player'); 
             const [userInput, setUserInput] = useState([]);
-            const [combatLog, setCombatLog] = useState("戰鬥開始！請輸入速成碼攻擊！");
-            const [damageText, setDamageText] = useState(null); // { val: string, type: 'crit'|'miss'|'heal'|'normal', id: rand }
+            const [combatLog, setCombatLog] = useState("戰鬥開始！");
+            const [animation, setAnimation] = useState(null); 
             const [rewards, setRewards] = useState([]); 
+            const [showStats, setShowStats] = useState(false);
+
+            // Init Monster (Scale with floor)
+            useEffect(() => {
+                if (!initialData) spawnMonster();
+            }, []);
+
+            const spawnMonster = () => {
+                const isBoss = player.floor % 5 === 0;
+                const pool = MONSTER_TYPES.filter(m => isBoss ? m.isBoss : !m.isBoss);
+                const type = pool[Math.floor(Math.random() * pool.length)];
+                
+                // Scaling Formula: Base * (1 + Floor * 0.15)
+                const scale = 1 + (player.floor * 0.15);
+                const hp = Math.floor(100 * type.hpMod * scale);
+                const name = `${isBoss ? '【BOSS】' : ''}${type.name} (Lv.${player.floor})`;
+                
+                setMonster({ hp: hp, maxHp: hp, name: name, type: type });
+                setAttackGauge(0);
+                setCombatLog(`遭遇 ${name}！`);
+            };
 
             const filteredQuestions = useMemo(() => {
                 if (category === 'all') return QUESTIONS;
                 return QUESTIONS.filter(q => q.category === category);
             }, [category]);
             
-            const activeQuestions = filteredQuestions.length > 0 ? filteredQuestions : QUESTIONS;
-            const currentQ = activeQuestions[qIndex];
+            // Random question pool logic
+            const currentQ = useMemo(() => {
+                return filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
+            }, [qIndex, category]);
 
-            // Helper for floating text
-            const showFloatText = (val, type) => {
-                setDamageText({ val, type, id: Math.random() });
-                setTimeout(() => setDamageText(null), 1000);
+            // Save Game Function
+            const saveGame = () => {
+                const saveData = {
+                    player,
+                    difficulty,
+                    date: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(saveData)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `word_battler_save_lv${player.level}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                setCombatLog("遊戲進度已儲存！");
             };
-
-            // Option Generation (Memoized)
-            const currentOptions = useMemo(() => {
-                if (difficulty === 'advanced') return [];
-                const correctOption = difficulty === 'beginner' 
-                    ? { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true }
-                    : { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true };
-
-                const safeDecoys = currentQ.decoys.filter(d => difficulty === 'beginner' ? d.code[0] !== currentQ.first : d.code !== currentQ.code);
-                const decoyOptions = safeDecoys.slice(0, 2).map(d => {
-                    if (difficulty === 'beginner') {
-                        const firstCode = d.code[0];
-                        return { label: `${d.char} (${firstCode})`, val: firstCode, isCorrect: false };
-                    } else {
-                        const first = d.code[0];
-                        const last = d.code[d.code.length - 1];
-                        return { label: `${d.char} (${first}+${last})`, val: first+last, isCorrect: false };
-                    }
-                });
-                return [correctOption, ...decoyOptions].sort(() => Math.random() - 0.5);
-            }, [qIndex, difficulty, currentQ]);
 
             // Monster Logic
             useEffect(() => {
@@ -218,78 +232,47 @@
                     interval = setInterval(() => {
                         setAttackGauge(prev => {
                             if (prev >= 100) {
-                                // Monster Attack
-                                const baseDmg = 10 + (qIndex * 2); // Scaling Dmg
+                                const baseDmg = 10 + (player.floor * 2);
                                 const finalDmg = Math.floor(baseDmg * monster.type.atkMod);
-                                handlePlayerDamage(finalDmg, `${monster.type.name} 發動攻擊！`);
+                                handlePlayerDamage(finalDmg, `${monster.type.name} 攻擊！`);
                                 return 0;
                             }
-                            // Speed Logic
                             let increment = 2.5 * monster.type.speedMod;
                             if (difficulty === 'intermediate') increment *= 0.7;
-                            if (difficulty === 'advanced') increment *= 0.3; // 30s roughly
+                            if (difficulty === 'advanced') increment *= 0.3; 
                             return prev + increment;
                         });
                     }, 200);
                 }
                 return () => clearInterval(interval);
-            }, [turn, difficulty, monster, qIndex]);
+            }, [turn, difficulty, monster, player.floor]);
 
+            // Handlers
             const handlePlayerDamage = (rawDmg, reason) => {
-                // Dodge Check
-                if (Math.random() < player.dodge) {
-                    showFloatText("MISS", 'miss');
-                    setCombatLog(`${reason} 但被你閃過了！`);
-                    return;
-                }
-
+                if (Math.random() < player.dodge) { setCombatLog(`${reason} MISS!`); return; }
                 AudioEngine.hit();
+                setAnimation('damage');
                 let damage = Math.max(0, rawDmg - player.shield);
-                let remainingShield = Math.max(0, player.shield - rawDmg);
+                const remainingShield = Math.max(0, player.shield - rawDmg);
                 
-                // Thorns
                 if (player.thorns > 0) {
                     const thornsDmg = Math.floor(rawDmg * player.thorns);
                     setMonster(m => ({ ...m, hp: Math.max(0, m.hp - thornsDmg) }));
-                    AudioEngine.block();
                 }
 
                 setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - damage), shield: remainingShield, combo: 0 }));
                 setCombatLog(`${reason} 受到 ${damage} 傷害！`);
-                
-                if (damage > 0) showFloatText(`-${damage}`, 'normal');
-
-                if (player.hp - damage <= 0) {
-                    setTurn('lose');
-                    AudioEngine.lose();
-                }
+                setTimeout(() => { setAnimation(null); if (player.hp - damage <= 0) { setTurn('lose'); AudioEngine.lose(); } }, 300);
             };
 
             const resolvePlayerAttack = () => {
-                // Stats
                 const comboMult = 1 + (player.combo * 0.1);
                 let damage = (player.atk + player.bonusDmg) * comboMult;
-                
-                // Crit Check
                 let isCrit = Math.random() < player.critChance;
-                if (isCrit) {
-                    damage *= player.critMult;
-                    AudioEngine.crit();
-                } else {
-                    AudioEngine.attack();
-                }
-                
+                if (isCrit) { damage *= player.critMult; AudioEngine.crit(); } else AudioEngine.attack();
                 damage = Math.floor(damage);
-                showFloatText(damage, isCrit ? 'crit' : 'normal');
 
-                // Lifesteal
-                if (player.lifesteal > 0) {
-                    const heal = Math.floor(damage * player.lifesteal);
-                    if (heal > 0) {
-                        setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + heal) }));
-                        setTimeout(() => showFloatText(`+${heal}`, 'heal'), 500); // Delayed float
-                    }
-                }
+                if (player.lifesteal > 0) setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + Math.floor(damage * player.lifesteal)) }));
 
                 setPlayer(p => ({ 
                     ...p, bonusDmg: 0, combo: p.combo + 1,
@@ -297,118 +280,151 @@
                 })); 
                 
                 setMonster(m => ({ ...m, hp: Math.max(0, m.hp - damage) }));
-                setCombatLog(`${isCrit ? '會心一擊！' : '攻擊成功！'} 造成 ${damage} 傷害！`);
-                setAttackGauge(prev => Math.max(0, prev - 10)); // Stagger
+                setCombatLog(`${isCrit ? '會心！' : '命中！'} -${damage}`);
+                setAttackGauge(prev => Math.max(0, prev - 10));
 
-                if (monster.hp - damage <= 0) {
-                    setTimeout(handleMonsterDefeat, 600);
-                } else {
-                    setTimeout(() => setUserInput([]), 600);
+                if (monster.hp - damage <= 0) setTimeout(handleMonsterDefeat, 600);
+                else setTimeout(() => setUserInput([]), 600);
+            };
+
+            const handleSkill = (skillId) => {
+                if (turn !== 'player') return;
+                const idx = player.skills.findIndex(s => s.id === skillId);
+                const skill = player.skills[idx];
+                if (skill.currentCd > 0) return;
+
+                AudioEngine.skill();
+                const updatedSkills = [...player.skills];
+                // Apply CDR from artifacts
+                const cooldown = Math.max(1, skill.baseCd - player.cdr);
+                updatedSkills[idx] = { ...skill, currentCd: cooldown };
+
+                // Hardcoded skill effects to avoid serialization issues
+                let newP = { ...player, skills: updatedSkills };
+                let log = '';
+                
+                if (skill.id === 'heal') {
+                    const healAmt = Math.floor(newP.maxHp * 0.3);
+                    newP.hp = Math.min(newP.maxHp, newP.hp + healAmt);
+                    log = `回復 ${healAmt} HP`;
+                } else if (skill.id === 'burst') {
+                    newP.bonusDmg = newP.atk * 2;
+                    log = '下擊傷害 200%';
+                } else if (skill.id === 'guard') {
+                    newP.shield += 50;
+                    log = '護盾 +50';
                 }
+
+                setPlayer(newP);
+                setCombatLog(log);
+                setAnimation('heal');
+                setTimeout(() => setAnimation(null), 800);
             };
 
             const handleMonsterDefeat = () => {
                 AudioEngine.levelUp();
-                // EXP & Level Up
-                let newExp = player.exp + 50;
+                let newExp = player.exp + 50 + (player.floor * 10);
                 let newLevel = player.level;
+                let newMaxExp = player.maxExp;
                 let leveledUp = false;
+
                 if (newExp >= player.maxExp) {
                     newExp -= player.maxExp;
                     newLevel++;
+                    newMaxExp = Math.floor(newMaxExp * 1.2);
                     leveledUp = true;
                 }
-                
+
                 setPlayer(p => ({
-                    ...p, exp: newExp, level: newLevel,
+                    ...p, exp: newExp, level: newLevel, maxExp: newMaxExp,
                     maxHp: leveledUp ? p.maxHp + 10 : p.maxHp,
                     atk: leveledUp ? p.atk + 2 : p.atk,
-                    hp: leveledUp ? p.maxHp : p.hp // Heal to max on level up? Let's say yes for fun
+                    hp: leveledUp ? p.maxHp : p.hp,
+                    floor: p.floor + 1
                 }));
 
-                // Pick Rewards
                 const pool = RPG_ARTIFACTS.sort(() => 0.5 - Math.random()).slice(0, 3);
                 setRewards(pool);
                 setTurn('reward');
             };
 
-            const handleSelectReward = (artifact) => {
+            const handleSelectReward = (reward) => {
                 AudioEngine.correct();
-                const newPlayer = artifact.effect(player);
-                setPlayer({ ...newPlayer, artifacts: [...newPlayer.artifacts, artifact] });
+                // Execute effect
+                const newP = reward.effect(player);
+                // Clean artifact for storage (remove function)
+                const safeArtifact = { id: reward.id, name: reward.name, icon: reward.icon, desc: reward.desc };
+                setPlayer({ ...newP, artifacts: [...newP.artifacts, safeArtifact] });
 
-                // Spawn Next Monster
-                if (qIndex < activeQuestions.length - 1) {
-                    setQIndex(q => q + 1);
-                    const nextType = MONSTER_TYPES[Math.min(MONSTER_TYPES.length-1, Math.floor(qIndex / 2) + 1)] || MONSTER_TYPES[0];
-                    const hpScale = 100 + (qIndex * 30);
-                    setMonster({ hp: hpScale * nextType.hpMod, maxHp: hpScale * nextType.hpMod, name: nextType.name, type: nextType });
-                    setUserInput([]);
-                    setAttackGauge(0);
-                    setTurn('player');
-                    setCombatLog(`遭遇 ${nextType.name}！`);
-                } else {
-                    setTurn('win');
-                    AudioEngine.win();
-                }
+                setQIndex(q => q + 1);
+                spawnMonster();
+                setUserInput([]);
+                setTurn('player');
             };
 
-            // Input Handlers
-            const handleAttack = (inputVal) => {
-                if (turn !== 'player') return;
-                let isCorrect = (difficulty === 'beginner' && inputVal === currentQ.first) || 
-                                (difficulty === 'intermediate' && inputVal === currentQ.code);
-                if (isCorrect) resolvePlayerAttack();
-                else handlePlayerDamage(5, "輸入錯誤！");
+            const renderInput = () => {
+                if (difficulty === 'advanced') {
+                    const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split('');
+                    const handleKeyClick = (key) => {
+                        if (turn !== 'player') return;
+                        if (userInput.length === 0) {
+                            if (key === currentQ.first) { AudioEngine.click(); setUserInput([key]); }
+                            else { handlePlayerDamage(5, "首碼錯誤"); setUserInput([]); }
+                        } else if (userInput.length === 1) {
+                            if (key === currentQ.last) { setUserInput([...userInput, key]); resolvePlayerAttack(); }
+                            else { handlePlayerDamage(5, "尾碼錯誤"); }
+                        }
+                    };
+                    // Physical KB
+                    useEffect(() => {
+                        const h = (e) => { const k = e.key.toUpperCase(); if(/^[A-Z]$/.test(k)) handleKeyClick(k); };
+                        window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
+                    }, [currentQ, userInput, turn]);
+
+                    return (
+                        <div className="w-full max-w-3xl mx-auto p-2">
+                            <div className="flex justify-center mb-4 space-x-2">
+                                <div className={`w-12 h-12 border-2 rounded flex items-center justify-center text-2xl font-bold bg-slate-800 border-magic-500 text-magic-300`}>{userInput[0] && KEYBOARD_MAP[userInput[0]]}</div>
+                                <div className={`w-12 h-12 border-2 rounded flex items-center justify-center text-2xl font-bold bg-slate-800 border-magic-500 text-magic-300`}>{userInput[1] && KEYBOARD_MAP[userInput[1]]}</div>
+                            </div>
+                            <div className="keyboard-grid">{keys.map(k => <button key={k} onClick={() => handleKeyClick(k)} className="aspect-square bg-slate-800 border border-slate-700 rounded flex flex-col items-center justify-center hover:bg-slate-700"><span className="text-xs text-slate-500">{k}</span><span className="text-magic-300 font-bold">{KEYBOARD_MAP[k]}</span></button>)}</div>
+                        </div>
+                    );
+                } 
+                
+                // Card Options
+                const currentOptions = useMemo(() => {
+                    if (difficulty === 'advanced') return [];
+                    const correct = difficulty === 'beginner' 
+                        ? { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true }
+                        : { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true };
+                    const decoys = currentQ.decoys.slice(0, 2).map(d => {
+                        if (difficulty === 'beginner') return { label: `${d.char} (${d.code[0]})`, val: d.code[0], isCorrect: false };
+                        return { label: `${d.char} (${d.code[0]}+${d.code[d.code.length-1]})`, val: d.code[0]+d.code[d.code.length-1], isCorrect: false };
+                    });
+                    return [correct, ...decoys].sort(() => Math.random() - 0.5);
+                }, [currentQ, difficulty]);
+
+                const handleCardClick = (val) => {
+                    if (turn !== 'player') return;
+                    const isCorrect = (difficulty === 'beginner' && val === currentQ.first) || (difficulty === 'intermediate' && val === currentQ.code);
+                    if (isCorrect) resolvePlayerAttack(); else handlePlayerDamage(5, "選錯了！");
+                };
+
+                return <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">{currentOptions.map((o,i) => <button key={i} onClick={() => handleCardClick(o.val)} className="bg-slate-800 border-2 border-magic-500 py-6 rounded-xl text-xl font-bold text-magic-300 hover:bg-slate-700">{o.label}</button>)}</div>;
             };
 
-            const handleKeyClick = (key) => {
-                if (turn !== 'player') return;
-                if (userInput.length === 0) {
-                    if (key === currentQ.first) { AudioEngine.click(); setUserInput([key]); }
-                    else { handlePlayerDamage(5, "首碼錯誤！"); setUserInput([]); }
-                } else if (userInput.length === 1) {
-                    if (key === currentQ.last) { setUserInput([...userInput, key]); resolvePlayerAttack(); }
-                    else { handlePlayerDamage(5, "尾碼錯誤！"); }
-                }
-            };
-
-            const handleSkill = (skillId) => {
-                if (turn !== 'player') return;
-                const skillIndex = player.skills.findIndex(s => s.id === skillId);
-                const skill = player.skills[skillIndex];
-                if (skill.currentCd > 0) return;
-
-                AudioEngine.skill();
-                const newP = skill.effect(player);
-                const newSkills = [...player.skills];
-                newSkills[skillIndex] = { ...skill, currentCd: skill.cd };
-                setPlayer({ ...newP, skills: newSkills });
-                setCombatLog(newP.log);
-            };
-
-            // Physical Keyboard
-            useEffect(() => {
-                if (difficulty !== 'advanced') return;
-                const h = (e) => { const k = e.key.toUpperCase(); if(/^[A-Z]$/.test(k)) handleKeyClick(k); };
-                window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
-            }, [difficulty, turn, userInput, currentQ]);
-
-            // --- Render ---
-            if (turn === 'win') return <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white p-8"><LucideIcon icon={Trophy} size={80} className="text-yellow-400 mb-6 animate-bounce" /><h2 className="text-4xl font-bold mb-4">通關！傳奇召喚師！</h2><div className="bg-slate-800 p-6 rounded-2xl mb-8 border border-slate-700 w-full max-w-md"><h3 className="text-lg text-magic-300 mb-4 border-b border-slate-600 pb-2">最終配置 (Build)</h3><div className="flex flex-wrap gap-2 justify-center">{player.artifacts.map((a,i)=>(<div key={i} className="bg-slate-900 p-2 rounded border border-slate-600 flex items-center gap-2"><LucideIcon icon={a.icon} size={16} className="text-yellow-400" /><span className="text-xs">{a.name}</span></div>))}</div></div><div className="flex space-x-4"><button onClick={onExit} className="bg-slate-700 px-8 py-3 rounded-full font-bold">選單</button><button onClick={onHome} className="bg-magic-600 px-8 py-3 rounded-full font-bold">主頁</button></div></div>;
-            
-            if (turn === 'lose') return <div className="absolute inset-0 bg-red-950 flex flex-col items-center justify-center text-white p-8"><LucideIcon icon={Skull} size={80} className="text-red-500 mb-6 animate-pulse" /><h2 className="text-4xl font-bold mb-4 text-red-500">戰敗...</h2><p className="text-xl mb-8">被 {monster.name} 擊倒了。</p><div className="flex space-x-4"><button onClick={onExit} className="bg-slate-700 px-8 py-3 rounded-full font-bold">重試</button><button onClick={onHome} className="bg-red-700 px-8 py-3 rounded-full font-bold">主頁</button></div></div>;
+            if (turn === 'lose') return <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white p-8"><LucideIcon icon={Skull} size={80} className="text-red-500 mb-6" /><h2 className="text-4xl font-bold mb-2 text-red-500">YOU DIED</h2><p className="mb-8">止步於第 {player.floor} 層</p><button onClick={onHome} className="bg-red-600 px-8 py-3 rounded-full font-bold">返回主頁</button></div>;
 
             if (turn === 'reward') return (
-                <div className="absolute inset-0 bg-slate-900/95 backdrop-blur flex flex-col items-center justify-center text-white p-4 z-50">
-                    <motion.div initial={{scale:0.8}} animate={{scale:1}} className="text-center mb-8"><h2 className="text-3xl font-bold text-yellow-400 mb-2">戰鬥勝利！</h2><p className="text-slate-300">選擇你的戰利品 (Roguelite)</p></motion.div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+                <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center text-white p-4 z-50">
+                    <h2 className="text-3xl font-bold text-yellow-400 mb-8 animate-bounce">戰利品選擇</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
                         {rewards.map((r, i) => (
-                            <button key={i} onClick={() => handleSelectReward(r)} className="bg-slate-800 border-2 border-magic-600 hover:bg-slate-700 p-6 rounded-2xl flex flex-col items-center transition-all hover:-translate-y-2">
-                                <div className="p-4 bg-slate-900 rounded-full mb-4"><LucideIcon icon={r.icon} size={40} className="text-yellow-400" /></div>
+                            <button key={i} onClick={() => handleSelectReward(r)} className="bg-slate-800 border-2 border-magic-600 hover:scale-105 transition-transform p-6 rounded-2xl flex flex-col items-center shadow-2xl">
+                                <LucideIcon icon={r.icon} size={48} className="text-yellow-400 mb-4" />
                                 <h3 className="text-xl font-bold mb-2">{r.name}</h3>
-                                <p className="text-sm text-slate-400 mb-4">{r.desc}</p>
-                                <span className="text-xs bg-magic-900 text-magic-300 px-3 py-1 rounded-full">選擇</span>
+                                <p className="text-sm text-slate-300">{r.desc}</p>
                             </button>
                         ))}
                     </div>
@@ -416,242 +432,168 @@
             );
 
             return (
-                <div className="h-full w-full flex flex-col bg-slate-950 text-white font-sans relative overflow-hidden">
-                    {/* Top Bar: Stats */}
-                    <div className="bg-slate-900/90 p-3 border-b border-slate-800 flex justify-between items-start z-10">
-                        <div className="w-1/2">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-10 h-10 bg-magic-700 rounded flex items-center justify-center font-bold text-lg border border-magic-500">{player.level}</div>
-                                <div className="flex-1">
-                                    <div className="flex justify-between text-xs text-slate-400 mb-1"><span>HP {player.hp}/{player.maxHp}</span><span>Shield: {player.shield}</span></div>
-                                    <div className="h-3 bg-slate-800 rounded-full overflow-hidden relative"><div className="h-full bg-red-500 transition-all duration-300" style={{width: `${(player.hp/player.maxHp)*100}%`}}></div>{player.shield > 0 && <div className="h-full bg-blue-400/50 absolute top-0 left-0" style={{width: `${(player.shield/player.maxHp)*100}%`}}></div>}</div>
-                                </div>
+                <div className={`h-full w-full flex flex-col bg-slate-950 text-white font-sans relative overflow-hidden ${animation === 'damage' ? 'animate-damage-flash' : ''}`}>
+                    {/* Header */}
+                    <div className="p-3 bg-slate-900/90 border-b border-slate-800 flex justify-between items-center z-10">
+                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => setShowStats(!showStats)}>
+                            <div className="w-12 h-12 bg-magic-700 rounded-lg flex flex-col items-center justify-center border-2 border-magic-500">
+                                <span className="text-xs">LV</span><span className="font-bold text-xl">{player.level}</span>
                             </div>
-                            {/* Build Icons (Mini) */}
-                            <div className="flex gap-1 overflow-hidden h-6">
-                                {player.artifacts.map((a, i) => <div key={i} title={a.name} className="bg-slate-800 p-1 rounded"><LucideIcon icon={a.icon} size={12} className="text-yellow-500"/></div>)}
+                            <div>
+                                <div className="text-xs text-slate-400">Floor {player.floor}</div>
+                                <div className="w-32 h-3 bg-slate-800 rounded-full overflow-hidden relative"><div className="h-full bg-red-500" style={{width: `${(player.hp/player.maxHp)*100}%`}}></div>{player.shield>0 && <div className="absolute top-0 h-full bg-blue-400/50" style={{width: `${(player.shield/player.maxHp)*100}%`}}/>}</div>
+                                <div className="text-[10px] text-right">{player.hp}/{player.maxHp}</div>
                             </div>
                         </div>
-                        <div className="w-1/3 text-right">
-                            <div className={`text-sm font-bold mb-1 ${monster.type.color}`}>{monster.name}</div>
-                            <div className="h-3 bg-slate-800 rounded-full overflow-hidden mb-1"><div className="h-full bg-red-600 transition-all duration-300" style={{width: `${(monster.hp/monster.maxHp)*100}%`}}></div></div>
-                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden w-full mt-1"><motion.div className="h-full bg-yellow-400" style={{width: `${attackGauge}%`}} /></div>
+                        <div className="flex gap-2">
+                            <button onClick={saveGame} className="p-2 bg-slate-800 rounded border border-slate-600" title="儲存進度"><LucideIcon icon={Save} size={18}/></button>
+                            <button onClick={onHome} className="p-2 bg-red-900 rounded border border-red-700" title="退出"><LucideIcon icon={X} size={18}/></button>
                         </div>
                     </div>
 
+                    {/* Stats Overlay */}
+                    {showStats && (
+                        <div className="absolute top-20 left-4 bg-slate-900/95 border border-slate-700 p-4 rounded-xl z-40 text-sm shadow-xl" onClick={()=>setShowStats(false)}>
+                            <h4 className="font-bold border-b border-slate-700 mb-2 pb-1">角色屬性</h4>
+                            <p>⚔️ 攻擊: {player.atk}</p>
+                            <p>⚡ 暴擊: {Math.round(player.critChance*100)}%</p>
+                            <p>🩸 吸血: {Math.round(player.lifesteal*100)}%</p>
+                            <p>🛡️ 反傷: {Math.round(player.thorns*100)}%</p>
+                            <p>💨 閃避: {Math.round(player.dodge*100)}%</p>
+                            <h4 className="font-bold border-b border-slate-700 mb-2 pb-1 mt-2">遺物背包</h4>
+                            <div className="flex flex-wrap gap-1 w-48">
+                                {player.artifacts.map((a,i)=><div key={i} title={a.name} className="bg-slate-800 p-1 rounded border border-slate-600"><LucideIcon icon={a.icon} size={14} className="text-yellow-500"/></div>)}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Arena */}
                     <div className="flex-1 relative flex flex-col items-center justify-center">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-magic-900/30 to-slate-950 -z-10"></div>
-                        
                         {/* Skills */}
                         <div className="absolute top-4 flex gap-4 z-20">
                             {player.skills.map(s => (
-                                <button key={s.id} onClick={() => handleSkill(s.id)} disabled={s.currentCd > 0} className={`w-12 h-12 rounded-full border-2 flex items-center justify-center relative transition-transform active:scale-95 ${s.currentCd > 0 ? 'bg-slate-800 border-slate-600 opacity-50' : `${s.color} border-white shadow-lg`}`}>
-                                    <LucideIcon icon={s.icon} size={20} className="text-white" />
-                                    {s.currentCd > 0 && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center font-bold">{s.currentCd}</div>}
+                                <button key={s.id} onClick={() => handleSkill(s.id)} disabled={s.currentCd > 0} className={`w-14 h-14 rounded-full border-2 flex flex-col items-center justify-center relative transition-transform active:scale-95 ${s.currentCd > 0 ? 'bg-slate-800 border-slate-600 opacity-50' : `${s.color} border-white shadow-lg`}`}>
+                                    <LucideIcon icon={s.icon} size={24} className="text-white" />
+                                    {s.currentCd > 0 && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center font-bold text-white">{s.currentCd}</div>}
                                 </button>
                             ))}
                         </div>
 
                         {/* Monster */}
-                        <div className="relative mt-8">
-                            <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="relative z-10">
-                                <div className="w-32 h-32 bg-slate-800 rounded-full border-4 border-magic-500 flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.4)]">
-                                    <LucideIcon icon={monster.type.icon} size={60} className={monster.type.color} />
-                                    <span className="absolute text-6xl font-serif font-black text-white drop-shadow-md">{currentQ.char}</span>
-                                </div>
-                            </motion.div>
-                            {/* Floating Text */}
-                            <AnimatePresence>
-                                {damageText && (
-                                    <motion.div key={damageText.id} initial={{ y: 0, opacity: 1, scale: 0.5 }} animate={{ y: -50, opacity: 0, scale: 1.2 }} className={`absolute -top-10 left-1/2 transform -translate-x-1/2 font-black text-3xl whitespace-nowrap ${damageText.type === 'crit' ? 'text-yellow-400 text-5xl' : damageText.type === 'miss' ? 'text-blue-300' : damageText.type === 'heal' ? 'text-green-400' : 'text-red-500'}`}>
-                                        {damageText.val}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <div className="mt-8 text-center h-6 text-magic-200 font-bold">{combatLog}</div>
-                    </div>
-
-                    {/* Input */}
-                    <div className="bg-slate-900 border-t border-slate-800 p-4 pb-8 rounded-t-3xl">
-                        <div className="max-w-3xl mx-auto">
-                            {difficulty === 'advanced' ? (
-                                <div className="space-y-4">
-                                    <div className="flex justify-center gap-2">
-                                        <div className={`w-12 h-12 border-2 rounded flex items-center justify-center text-2xl font-bold bg-slate-800 ${userInput[0] ? 'border-magic-500 text-magic-300' : 'border-slate-600 text-slate-600'}`}>{userInput[0] && KEYBOARD_MAP[userInput[0]]}</div>
-                                        <div className={`w-12 h-12 border-2 rounded flex items-center justify-center text-2xl font-bold bg-slate-800 ${userInput[1] ? 'border-magic-500 text-magic-300' : 'border-slate-600 text-slate-600'}`}>{userInput[1] && KEYBOARD_MAP[userInput[1]]}</div>
-                                    </div>
-                                    <div className="keyboard-grid">
-                                        {"QWERTYUIOPASDFGHJKLZXCVBNM".split('').map(k => (
-                                            <button key={k} onClick={() => handleKeyClick(k)} className="aspect-square bg-slate-800 rounded border border-slate-700 flex flex-col items-center justify-center active:bg-slate-700">
-                                                <span className="text-[10px] text-slate-500">{k}</span><span className="text-base text-magic-200 font-serif">{KEYBOARD_MAP[k]}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-3 gap-4">
-                                    {currentOptions.map((opt, i) => (
-                                        <button key={i} onClick={() => handleAttack(opt.val)} className="bg-slate-800 border-2 border-magic-600 py-6 rounded-xl text-xl font-bold text-magic-100 active:scale-95">{opt.label}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className="absolute top-4 right-4 flex gap-2 z-50">
-                        <button onClick={onExit} className="p-2 bg-slate-800 rounded-full border border-slate-600 text-white"><LucideIcon icon={ArrowLeft} /></button>
-                        <button onClick={onHome} className="p-2 bg-magic-600 rounded-full text-white shadow"><LucideIcon icon={Home} /></button>
-                    </div>
-                </div>
-            );
-        };
-
-        // ... RunnerGame and FactoryGame remain mostly the same, included for completeness
-        const RunnerGame = ({ difficulty, category, onExit, onHome, currentTheme, user }) => {
-            const [score, setScore] = useState(0);
-            const [time, setTime] = useState(0);
-            const [qIndex, setQIndex] = useState(0);
-            const [gameState, setGameState] = useState('running');
-            const [userInput, setUserInput] = useState([]);
-            const [feedback, setFeedback] = useState(null);
-            const [message, setMessage] = useState(null);
-            const [qStartTime, setQStartTime] = useState(null);
-            
-            const filteredQuestions = useMemo(() => category === 'all' ? QUESTIONS : QUESTIONS.filter(q => q.category === category), [category]);
-            const activeQuestions = filteredQuestions.length > 0 ? filteredQuestions : QUESTIONS;
-            const currentQ = activeQuestions[qIndex];
-            const charProgress = (qIndex / activeQuestions.length) * 80;
-            const charPosition = gameState === 'win' ? 90 : 10 + charProgress;
-
-            useEffect(() => {
-                let interval; if (gameState !== 'win') interval = setInterval(() => setTime(t => t + 1), 1000);
-                return () => clearInterval(interval);
-            }, [gameState]);
-
-            useEffect(() => {
-                let timer; if (gameState === 'running') timer = setTimeout(() => { setGameState('bullet_time'); setQStartTime(Date.now()); }, 2000);
-                return () => clearTimeout(timer);
-            }, [gameState, qIndex]);
-
-            const currentOptions = useMemo(() => {
-                if (difficulty === 'advanced') return [];
-                const correct = difficulty === 'beginner' 
-                    ? { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true }
-                    : { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true };
-                const safeDecoys = currentQ.decoys.filter(d => difficulty === 'beginner' ? d.code[0] !== currentQ.first : d.code !== currentQ.code);
-                const decoyOptions = safeDecoys.slice(0, 2).map(d => {
-                    if (difficulty === 'beginner') return { label: `${d.char} (${d.code[0]})`, val: d.code[0], isCorrect: false };
-                    return { label: `${d.char} (${d.code[0]}+${d.code[d.code.length-1]})`, val: d.code[0]+d.code[d.code.length-1], isCorrect: false };
-                });
-                return [correct, ...decoyOptions].sort(() => Math.random() - 0.5);
-            }, [qIndex, difficulty, currentQ]);
-
-            const handleOptionClick = (val) => {
-                if (feedback === 'correct') return;
-                let isCorrect = false;
-                if (difficulty === 'beginner') isCorrect = val === currentQ.first;
-                else if (difficulty === 'intermediate') isCorrect = val === currentQ.code;
-                if (isCorrect) processAnswer(true);
-                else { AudioEngine.wrong(); setFeedback('wrong'); setMessage(`再試一次！`); setTimeout(() => { setFeedback(null); setMessage(null); }, 1000); }
-            };
-
-            const handleKeyClick = (key) => {
-                if (gameState !== 'bullet_time' || difficulty !== 'advanced' || feedback === 'correct') return;
-                if (userInput.length === 0) {
-                    if (key === currentQ.first) { AudioEngine.click(); setUserInput([key]); setMessage(null); setFeedback(null); }
-                    else { AudioEngine.wrong(); setFeedback('wrong-first'); setMessage(`首碼錯誤！提示：${currentQ.hint}`); setUserInput([key]); setTimeout(() => { if (userInput.length <= 1) { setFeedback(null); setMessage(null); setUserInput([]); } }, 1000); }
-                } else if (userInput.length === 1) {
-                    if (key === currentQ.last) { setUserInput([...userInput, key]); processAnswer(true); }
-                    else { AudioEngine.wrong(); setFeedback('wrong-second'); setMessage(`尾碼錯誤！提示：${currentQ.hint}`); setTimeout(() => { setFeedback(null); setMessage(null); }, 1000); }
-                }
-            };
-
-            useEffect(() => {
-                if (difficulty !== 'advanced') return;
-                const h = (e) => { const k = e.key.toUpperCase(); if (/^[A-Z]$/.test(k)) handleKeyClick(k); };
-                window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
-            }, [difficulty, gameState, userInput, feedback]);
-
-            const processAnswer = () => {
-                AudioEngine.correct(); setFeedback('correct'); setMessage(null);
-                const speedBonus = Math.max(0, Math.floor(50 - ((Date.now() - qStartTime)/1000) * 5));
-                setScore(s => s + 100 + speedBonus);
-                setTimeout(() => { setFeedback(null); setUserInput([]); if (qIndex < activeQuestions.length - 1) { setQIndex(q => q + 1); setGameState('running'); } else { AudioEngine.win(); setGameState('win'); } }, 1000);
-            };
-
-            if (gameState === 'win') return <div className="h-full flex flex-col items-center justify-center bg-brand-50"><LucideIcon icon={Trophy} size={64} className="text-yellow-500 mb-4" /><h2 className="text-3xl font-bold">跑酷完成！</h2><p className="mb-4">得分: {score}</p><button onClick={onExit} className="bg-brand-500 text-white px-6 py-2 rounded-full">返回</button></div>;
-
-            return (
-                <div className={`h-full w-full flex flex-col ${currentTheme.bg} overflow-hidden relative`}>
-                    <div className="absolute top-4 left-4 flex gap-2 z-20"><button onClick={onExit} className="bg-white/80 p-2 rounded-full"><LucideIcon icon={ArrowLeft} /></button></div>
-                    <div className="absolute top-4 right-4 flex gap-2 z-20 bg-white/80 px-4 py-2 rounded-full"><LucideIcon icon={Star} className="text-yellow-500" /><span className="font-bold">{score}</span></div>
-                    
-                    <div className="relative h-[45%] flex flex-col justify-end overflow-hidden">
-                        <div className={`absolute bottom-0 w-full h-1/2 bg-gradient-to-b ${currentTheme.road} perspective-road flex justify-center`}><div className={`w-4 h-full bg-white/30 ${gameState === 'running' ? 'animate-pulse' : ''}`}></div></div>
-                        <div className="absolute bottom-10 right-[5%] z-10 flex flex-col items-center"><div className="h-24 w-2 bg-slate-400"></div><LucideIcon icon={Flag} size={48} className="text-red-500 fill-current" /></div>
-                        <div className="absolute bottom-8 z-20 transition-all duration-1000 ease-in-out" style={{ left: `${charPosition}%` }}><div className="relative transform -translate-x-1/2"><motion.div animate={gameState === 'running' ? { y: [0, -10, 0] } : { y: 0 }} transition={{ repeat: Infinity, duration: 0.5 }}><div style={{ transform: 'scaleX(-1)', display: 'inline-block' }} className={`text-6xl filter drop-shadow-2xl ${feedback === 'wrong' ? 'animate-shake grayscale' : ''}`}>{feedback === 'wrong' ? '😵' : '🏃'}</div></motion.div><AnimatePresence><motion.div key={qIndex} initial={{ scale: 0, y: 50, opacity: 0 }} animate={{ scale: gameState === 'bullet_time' ? 1 : 0.2, y: gameState === 'bullet_time' ? -100 : 20, opacity: gameState === 'bullet_time' ? 1 : 0 }} className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-30 mb-12"><div className="bg-white border-8 border-slate-800 rounded-2xl w-32 h-32 flex flex-col items-center justify-center shadow-2xl"><span className="text-6xl font-serif font-black text-slate-900">{currentQ.char}</span></div></motion.div></AnimatePresence></div></div>
-                    </div>
-
-                    <div className="flex-1 bg-white relative z-20 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] rounded-t-[2.5rem] p-6 flex flex-col justify-start pt-12">
-                        {gameState === 'bullet_time' ? (
-                            <div className="w-full flex flex-col items-center">
-                                <h3 className={`font-bold mb-6 text-sm tracking-wider uppercase ${feedback?.includes('wrong') ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>{message || (difficulty === 'advanced' ? (userInput.length > 0 ? '請輸入尾碼' : '請輸入首碼') : '選擇正確部件')}</h3>
-                                {difficulty === 'advanced' ? (
-                                    <div className="w-full max-w-3xl">
-                                        <div className="flex justify-center gap-2 mb-4"><div className="w-12 h-12 border-2 rounded flex items-center justify-center font-bold bg-slate-50">{userInput[0] && KEYBOARD_MAP[userInput[0]]}</div><div className="w-12 h-12 border-2 rounded flex items-center justify-center font-bold bg-slate-50">{userInput[1] && KEYBOARD_MAP[userInput[1]]}</div></div>
-                                        <div className="keyboard-grid">{"QWERTYUIOPASDFGHJKLZXCVBNM".split('').map(k => <button key={k} onClick={() => handleKeyClick(k)} className="aspect-square bg-white border rounded flex flex-col items-center justify-center active:bg-slate-100"><span className="text-xs text-slate-400">{k}</span><span className="font-bold">{KEYBOARD_MAP[k]}</span></button>)}</div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-3 gap-4 w-full max-w-2xl">{currentOptions.map((opt, i) => <button key={i} onClick={() => handleOptionClick(opt.val)} className="py-6 rounded-xl text-xl font-bold bg-white border-2 border-slate-100 shadow-lg active:scale-95 hover:bg-slate-50">{opt.label}</button>)}</div>
-                                )}
+                        <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="relative z-10 mt-8 mb-4">
+                            <div className="w-40 h-40 bg-slate-800 rounded-full border-4 border-magic-500 flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.4)]">
+                                <LucideIcon icon={monster.type.icon} size={80} className={monster.type.color} />
+                                <span className="absolute text-7xl font-serif font-black text-white drop-shadow-md">{currentQ.char}</span>
                             </div>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-300"><div className="animate-pulse flex flex-col items-center"><LucideIcon icon={Rocket} size={48} className="mb-4 text-slate-200" /><span className="font-bold tracking-widest text-lg">奔跑中...</span></div></div>
-                        )}
+                            {/* ATB Bar */}
+                            <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-32 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-600">
+                                <motion.div className="h-full bg-red-500" style={{ width: `${attackGauge}%` }} transition={{ ease: 'linear', duration: 0.2 }} />
+                            </div>
+                            <div className="absolute -top-8 w-full text-center text-red-400 font-bold text-sm">{monster.name}</div>
+                        </motion.div>
+
+                        <div className="text-center h-8 font-bold text-lg text-magic-200">{combatLog}</div>
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="bg-slate-900 border-t border-slate-800 p-6 rounded-t-3xl shadow-2xl">
+                        <div className="max-w-4xl mx-auto text-center">{renderInput()}</div>
                     </div>
                 </div>
             );
         };
 
-        const FactoryGame = ({ onExit, onHome, user }) => { /* ... Factory Game Code Same as V6 ... */ return <div className="h-full flex items-center justify-center bg-slate-100">工廠模式維護中 <button onClick={onExit} className="ml-4 p-2 bg-white rounded shadow">返回</button></div> };
-
-        // --- 📱 Main App Container ---
+        // --- 🏠 App Component ---
         const App = () => {
             const [view, setView] = useState('home'); 
             const [userName, setUserName] = useState('');
-            const [config, setConfig] = useState({ difficulty: 'beginner', category: 'all', theme: THEMES.FOREST, mode: 'runner' });
+            const [saveData, setSaveData] = useState(null);
+            const [config, setConfig] = useState({ difficulty: 'beginner', category: 'all' });
+
+            const handleLoadGame = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        setSaveData(data);
+                        setUserName(data.player.name || "玩家"); // Simplified
+                        setConfig({ difficulty: data.difficulty, category: 'all' });
+                        setView('game_rpg_load');
+                    } catch (err) {
+                        alert("存檔讀取失敗！");
+                    }
+                };
+                reader.readAsText(file);
+            };
+
             const goHome = () => setView('home');
 
-            if (view === 'home') return <div className="h-full flex flex-col items-center justify-center bg-brand-50 p-6"><div className="bg-white p-8 rounded-3xl shadow-xl text-center w-full max-w-md"><LucideIcon icon={Rocket} size={48} className="text-brand-500 mx-auto mb-4" /><h1 className="text-3xl font-black text-slate-800 mb-4">速成大冒險 V7</h1><input className="w-full p-4 border-2 rounded-xl mb-4 text-center text-lg" placeholder="輸入名字" value={userName} onChange={e=>setUserName(e.target.value)} /><button disabled={!userName} onClick={()=>{AudioEngine.click(); setView('mode_select')}} className="w-full bg-brand-500 text-white p-4 rounded-xl font-bold shadow-lg disabled:opacity-50">開始</button></div></div>;
+            if (view === 'home') {
+                return (
+                    <div className="h-full w-full bg-brand-50 flex flex-col items-center justify-center p-6">
+                        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto text-brand-600"><LucideIcon icon={Rocket} size={40} /></div>
+                            <h1 className="text-3xl font-black text-slate-800">速成大冒險 V8</h1>
+                            <p className="text-slate-500">Roguelite RPG x 打字練習</p>
+                            
+                            <input className="w-full p-4 border-2 rounded-xl text-center text-lg focus:border-brand-500 outline-none" placeholder="輸入名字開始" value={userName} onChange={e=>setUserName(e.target.value)} />
+                            
+                            <button disabled={!userName} onClick={() => { AudioEngine.click(); setView('mode_select'); }} className="w-full bg-brand-500 text-white p-4 rounded-xl font-bold shadow-lg disabled:opacity-50 hover:bg-brand-600 transition-all">
+                                <LucideIcon icon={Play} className="inline mr-2" /> 開始新遊戲
+                            </button>
 
-            if (view === 'mode_select') return (
-                <div className="h-full bg-slate-50 p-6 overflow-y-auto">
-                    <div className="flex justify-between items-center mb-8"><div><h2 className="text-2xl font-bold">你好，{userName}</h2></div><button onClick={goHome}><LucideIcon icon={Home} /></button></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                        <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 relative overflow-hidden">
-                            <div className="relative z-10"><LucideIcon icon={Zap} size={32} className="text-yellow-500 mb-4" /><h3 className="text-2xl font-bold mb-2">速成大冒險 (跑酷)</h3><div className="space-y-2">{['beginner','intermediate','advanced'].map(d=><button key={d} onClick={()=>{setConfig({...config, mode:'runner', difficulty:d}); setView('category_select')}} className="w-full p-3 bg-yellow-50 text-yellow-700 font-bold rounded-xl text-left">{(d==='beginner'?'🟢 初階':d==='intermediate'?'🟡 中階':'🔴 高階')}</button>)}</div></div>
+                            <div className="relative">
+                                <input type="file" id="load-save" className="hidden" onChange={handleLoadGame} accept=".json" />
+                                <label htmlFor="load-save" className="block w-full bg-slate-100 text-slate-600 p-4 rounded-xl font-bold cursor-pointer hover:bg-slate-200 transition-all">
+                                    <LucideIcon icon={Upload} className="inline mr-2" /> 讀取進度 (JSON)
+                                </label>
+                            </div>
                         </div>
-                        <div className="bg-slate-800 p-6 rounded-3xl shadow-lg border border-slate-700 relative overflow-hidden text-white">
-                            <div className="relative z-10"><LucideIcon icon={Sword} size={32} className="text-purple-400 mb-4" /><h3 className="text-2xl font-bold mb-2">字靈召喚師 (RPG)</h3><p className="text-sm text-slate-400 mb-4">Roguelite 戰鬥！打寶、升級！</p><div className="space-y-2">{['beginner','intermediate','advanced'].map(d=><button key={d} onClick={()=>{setConfig({...config, mode:'rpg', difficulty:d}); setView('category_select')}} className="w-full p-3 bg-slate-700 text-purple-300 font-bold rounded-xl text-left border border-slate-600">{(d==='beginner'?'🟢 學徒':d==='intermediate'?'🟡 法師':'🔴 賢者')}</button>)}</div></div>
+                        <div className="mt-8 text-slate-400 text-sm">© 2025 WMC Education</div>
+                    </div>
+                );
+            }
+
+            if (view === 'mode_select') {
+                return (
+                    <div className="h-full bg-slate-50 p-6 flex flex-col items-center justify-center">
+                        <h2 className="text-2xl font-bold mb-8">選擇遊戲模式</h2>
+                        <div className="grid gap-6 w-full max-w-md">
+                            <button onClick={() => setView('category_select')} className="bg-slate-800 text-white p-6 rounded-2xl shadow-xl hover:scale-105 transition-transform flex items-center gap-4">
+                                <div className="p-4 bg-purple-600 rounded-full"><LucideIcon icon={Sword} size={32} /></div>
+                                <div className="text-left"><h3 className="text-xl font-bold">字靈召喚師 (RPG)</h3><p className="text-sm text-slate-400">Roguelike 無限挑戰</p></div>
+                            </button>
+                            <button className="bg-white text-slate-800 p-6 rounded-2xl shadow-xl hover:scale-105 transition-transform flex items-center gap-4 opacity-50 cursor-not-allowed">
+                                <div className="p-4 bg-yellow-100 rounded-full"><LucideIcon icon={Zap} size={32} className="text-yellow-600"/></div>
+                                <div className="text-left"><h3 className="text-xl font-bold">速成跑酷 (維護中)</h3><p className="text-sm text-slate-400">專注 RPG 模式測試</p></div>
+                            </button>
+                        </div>
+                        <button onClick={goHome} className="mt-8 text-slate-400 hover:text-slate-600">返回主頁</button>
+                    </div>
+                );
+            }
+
+            if (view === 'category_select') {
+                return (
+                    <div className="h-full bg-slate-50 p-6">
+                        <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">選擇難度</h2><button onClick={()=>setView('mode_select')}><LucideIcon icon={ArrowLeft} /></button></div>
+                        <div className="space-y-4 max-w-md mx-auto">
+                            {['beginner', 'intermediate', 'advanced'].map(d => (
+                                <button key={d} onClick={()=>{setConfig({...config, difficulty:d}); setView('game_rpg')}} className="w-full p-6 bg-white rounded-2xl shadow-md font-bold text-left flex justify-between hover:bg-brand-50">
+                                    <span>{d==='beginner' ? '🟢 學徒 (首碼)' : d==='intermediate' ? '🟡 法師 (全碼)' : '🔴 賢者 (鍵盤)'}</span>
+                                    <LucideIcon icon={Play} />
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </div>
-            );
+                );
+            }
 
-            if (view === 'category_select') return (
-                <div className="h-full bg-slate-50 p-6">
-                    <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">選擇範疇</h2><button onClick={()=>setView('mode_select')}><LucideIcon icon={ArrowLeft} /></button></div>
-                    <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
-                        {CATEGORIES.map(cat => <button key={cat.id} onClick={()=>{setConfig({...config, category:cat.id}); setView(config.mode==='rpg'?'game_rpg':'game_runner')}} className="p-6 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-brand-200 flex flex-col items-center"><LucideIcon icon={cat.icon} size={32} className={cat.color.split(' ')[1]} /><span className="font-bold mt-2">{cat.name}</span></button>)}
-                    </div>
-                </div>
-            );
+            if (view === 'game_rpg') return <RPGGame user={userName} difficulty={config.difficulty} category="all" onExit={goHome} onHome={goHome} />;
+            if (view === 'game_rpg_load') return <RPGGame user={userName} difficulty={config.difficulty} category="all" onExit={goHome} onHome={goHome} initialData={saveData} />;
 
-            if (view === 'game_runner') return <RunnerGame user={userName} {...config} onExit={()=>setView('category_select')} onHome={goHome} />;
-            if (view === 'game_rpg') return <RPGGame user={userName} {...config} onExit={()=>setView('category_select')} onHome={goHome} />;
             return null;
         };
 
