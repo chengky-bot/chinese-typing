@@ -154,6 +154,12 @@
             { name: '深淵領主', hpMod: 3.0, atkMod: 1.8, speedMod: 0.8, color: 'text-rose-500', icon: Skull, isBoss: true },
         ];
 
+        const RPG_SKILLS = [
+            { id: 'heal', name: '治癒術', baseCd: 4, currentCd: 0, icon: Heart, color: 'bg-green-500' }, 
+            { id: 'burst', name: '爆裂魔法', baseCd: 6, currentCd: 0, icon: Flame, color: 'bg-red-500' }, 
+            { id: 'guard', name: '鐵壁', baseCd: 5, currentCd: 0, icon: Shield, color: 'bg-blue-500' }
+        ];
+
         // --- ⚔️ RPG Game Component ---
         const RPGGame = ({ difficulty, category, onExit, onHome, onLoadGame, initialData }) => {
             // Player State
@@ -161,7 +167,7 @@
                 hp: 100, maxHp: 100, atk: 20, level: 1, exp: 0, maxExp: 100,
                 critChance: 0.1, critMult: 1.5, lifesteal: 0, thorns: 0, dodge: 0, shield: 0, cdr: 0,
                 bonusDmg: 0, combo: 0,
-                skills: [{ id: 'heal', name: '治癒術', baseCd: 4, currentCd: 0, icon: Heart, color: 'bg-green-500' }, { id: 'burst', name: '爆裂魔法', baseCd: 6, currentCd: 0, icon: Flame, color: 'bg-red-500' }, { id: 'guard', name: '鐵壁', baseCd: 5, currentCd: 0, icon: Shield, color: 'bg-blue-500' }],
+                skills: RPG_SKILLS,
                 artifacts: [],
                 floor: 1
             });
@@ -205,6 +211,38 @@
             const currentQ = useMemo(() => {
                 return filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
             }, [qIndex, category]);
+
+            // Robust Option Generation moved to top level
+            const currentOptions = useMemo(() => {
+                if (difficulty === 'advanced') return [];
+
+                // Correct Answer
+                const correctOption = difficulty === 'beginner' 
+                    ? { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true }
+                    : { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true };
+
+                // Generate Decoys
+                const safeDecoys = currentQ.decoys.filter(d => 
+                    difficulty === 'beginner' 
+                    ? d.code[0] !== currentQ.first 
+                    : d.code !== currentQ.code
+                );
+
+                const decoyOptions = safeDecoys.slice(0, 2).map(d => {
+                    if (difficulty === 'beginner') {
+                        const firstCode = d.code[0];
+                        return { label: `${d.char} (${firstCode})`, val: firstCode, isCorrect: false };
+                    } else {
+                        const first = d.code[0];
+                        const last = d.code[d.code.length - 1];
+                        return { label: `${d.char} (${first}+${last})`, val: first+last, isCorrect: false };
+                    }
+                });
+
+                const allOptions = [correctOption, ...decoyOptions];
+                return allOptions.sort(() => Math.random() - 0.5);
+
+            }, [qIndex, difficulty, currentQ]);
 
             // Save Game Function
             const saveGame = () => {
@@ -362,25 +400,36 @@
                 setTurn('player');
             };
 
+            // Input Handlers
+            const handleAttack = (inputVal) => {
+                if (turn !== 'player') return;
+                let isCorrect = (difficulty === 'beginner' && inputVal === currentQ.first) || 
+                                (difficulty === 'intermediate' && inputVal === currentQ.code);
+                if (isCorrect) resolvePlayerAttack();
+                else handlePlayerDamage(5, "輸入錯誤！");
+            };
+
+            const handleKeyClick = (key) => {
+                if (turn !== 'player') return;
+                if (userInput.length === 0) {
+                    if (key === currentQ.first) { AudioEngine.click(); setUserInput([key]); }
+                    else { handlePlayerDamage(5, "首碼錯誤"); setUserInput([]); }
+                } else if (userInput.length === 1) {
+                    if (key === currentQ.last) { setUserInput([...userInput, key]); resolvePlayerAttack(); }
+                    else { handlePlayerDamage(5, "尾碼錯誤"); }
+                }
+            };
+
+            // Keyboard listener
+            useEffect(() => {
+                if (difficulty !== 'advanced') return;
+                const h = (e) => { const k = e.key.toUpperCase(); if(/^[A-Z]$/.test(k)) handleKeyClick(k); };
+                window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
+            }, [difficulty, turn, userInput, currentQ]); // Updated dependencies
+
             const renderInput = () => {
                 if (difficulty === 'advanced') {
                     const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split('');
-                    const handleKeyClick = (key) => {
-                        if (turn !== 'player') return;
-                        if (userInput.length === 0) {
-                            if (key === currentQ.first) { AudioEngine.click(); setUserInput([key]); }
-                            else { handlePlayerDamage(5, "首碼錯誤"); setUserInput([]); }
-                        } else if (userInput.length === 1) {
-                            if (key === currentQ.last) { setUserInput([...userInput, key]); resolvePlayerAttack(); }
-                            else { handlePlayerDamage(5, "尾碼錯誤"); }
-                        }
-                    };
-                    // Physical KB
-                    useEffect(() => {
-                        const h = (e) => { const k = e.key.toUpperCase(); if(/^[A-Z]$/.test(k)) handleKeyClick(k); };
-                        window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
-                    }, [currentQ, userInput, turn]);
-
                     return (
                         <div className="w-full max-w-3xl mx-auto p-2">
                             <div className="flex justify-center mb-4 space-x-2">
@@ -392,26 +441,7 @@
                     );
                 } 
                 
-                // Card Options
-                const currentOptions = useMemo(() => {
-                    if (difficulty === 'advanced') return [];
-                    const correct = difficulty === 'beginner' 
-                        ? { label: `${KEYBOARD_MAP[currentQ.first]} (${currentQ.first})`, val: currentQ.first, isCorrect: true }
-                        : { label: `${KEYBOARD_MAP[currentQ.first]} + ${KEYBOARD_MAP[currentQ.last]}`, val: currentQ.code, isCorrect: true };
-                    const decoys = currentQ.decoys.slice(0, 2).map(d => {
-                        if (difficulty === 'beginner') return { label: `${d.char} (${d.code[0]})`, val: d.code[0], isCorrect: false };
-                        return { label: `${d.char} (${d.code[0]}+${d.code[d.code.length-1]})`, val: d.code[0]+d.code[d.code.length-1], isCorrect: false };
-                    });
-                    return [correct, ...decoys].sort(() => Math.random() - 0.5);
-                }, [currentQ, difficulty]);
-
-                const handleCardClick = (val) => {
-                    if (turn !== 'player') return;
-                    const isCorrect = (difficulty === 'beginner' && val === currentQ.first) || (difficulty === 'intermediate' && val === currentQ.code);
-                    if (isCorrect) resolvePlayerAttack(); else handlePlayerDamage(5, "選錯了！");
-                };
-
-                return <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">{currentOptions.map((o,i) => <button key={i} onClick={() => handleCardClick(o.val)} className="bg-slate-800 border-2 border-magic-500 py-6 rounded-xl text-xl font-bold text-magic-300 hover:bg-slate-700">{o.label}</button>)}</div>;
+                return <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">{currentOptions.map((o,i) => <button key={i} onClick={() => handleAttack(o.val)} className="bg-slate-800 border-2 border-magic-500 py-6 rounded-xl text-xl font-bold text-magic-300 hover:bg-slate-700">{o.label}</button>)}</div>;
             };
 
             if (turn === 'lose') return <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white p-8"><LucideIcon icon={Skull} size={80} className="text-red-500 mb-6" /><h2 className="text-4xl font-bold mb-2 text-red-500">YOU DIED</h2><p className="mb-8">止步於第 {player.floor} 層</p><button onClick={onHome} className="bg-red-600 px-8 py-3 rounded-full font-bold">返回主頁</button></div>;
@@ -469,10 +499,12 @@
 
                     {/* Arena */}
                     <div className="flex-1 relative flex flex-col items-center justify-center">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-magic-900/30 to-slate-950 -z-10"></div>
+                        
                         {/* Skills */}
                         <div className="absolute top-4 flex gap-4 z-20">
                             {player.skills.map(s => (
-                                <button key={s.id} onClick={() => handleSkill(s.id)} disabled={s.currentCd > 0} className={`w-14 h-14 rounded-full border-2 flex flex-col items-center justify-center relative transition-transform active:scale-95 ${s.currentCd > 0 ? 'bg-slate-800 border-slate-600 opacity-50' : `${s.color} border-white shadow-lg`}`}>
+                                <button key={s.id} onClick={() => handleSkill(s.id)} disabled={s.currentCd > 0} className={`w-12 h-12 rounded-full border-2 flex items-center justify-center relative transition-transform active:scale-95 ${s.currentCd > 0 ? 'bg-slate-800 border-slate-600 opacity-50' : `${s.color} border-white shadow-lg`}`}>
                                     <LucideIcon icon={s.icon} size={24} className="text-white" />
                                     {s.currentCd > 0 && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center font-bold text-white">{s.currentCd}</div>}
                                 </button>
