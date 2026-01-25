@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>速成大冒險 | Quick Input Adventure V16</title>
+    <title>速成大冒險 | Quick Input Adventure V28</title>
     
     <!-- Core Dependencies -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -56,9 +56,7 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .keyboard-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
-        /* Perspective road for Runner */
         .perspective-road { transform: perspective(500px) rotateX(40deg); transform-origin: 50% 100%; }
-        /* Blind effect */
         .blind-blur { filter: blur(4px); user-select: none; opacity: 0.5; }
     </style>
 </head>
@@ -79,83 +77,39 @@
 
         const LucideIcon = ({ icon, size = 24, className = "" }) => icon ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icon.map(([tag, attrs], i) => React.createElement(tag, { ...attrs, key: i }))}</svg> : null;
 
-        // --- 🎵 Audio Engine (Polished) ---
+        // --- 🎵 Audio Engine ---
         const AudioEngine = {
             ctx: null,
             init: function() { 
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-                }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
+                if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+                if (this.ctx.state === 'suspended') { this.ctx.resume(); }
             },
             playTone: function(freq, type, duration, vol = 0.1, slideTo = null) {
                 if (!this.ctx) this.init();
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator(); 
                 const gain = this.ctx.createGain();
-                
-                osc.type = type; 
-                osc.frequency.setValueAtTime(freq, t);
-                if (slideTo) {
-                    osc.frequency.exponentialRampToValueAtTime(slideTo, t + duration);
-                }
-
-                // ADSR Envelope for smoother sound
+                osc.type = type; osc.frequency.setValueAtTime(freq, t);
+                if (slideTo) { osc.frequency.exponentialRampToValueAtTime(slideTo, t + duration); }
                 gain.gain.setValueAtTime(0, t);
-                gain.gain.linearRampToValueAtTime(vol, t + 0.02); // Fast attack
-                gain.gain.exponentialRampToValueAtTime(0.001, t + duration); // Smooth decay
-
-                osc.connect(gain); 
-                gain.connect(this.ctx.destination);
-                
-                osc.start(); 
-                osc.stop(t + duration);
+                gain.gain.linearRampToValueAtTime(vol, t + 0.02); 
+                gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(t + duration);
             },
-            correct: function() { 
-                this.playTone(880, 'sine', 0.2, 0.1); 
-                setTimeout(() => this.playTone(1108, 'sine', 0.3, 0.1), 50); 
-            },
-            wrong: function() { 
-                this.playTone(150, 'triangle', 0.3, 0.15, 100); 
-            },
-            click: function() { 
-                this.playTone(1200, 'sine', 0.03, 0.02); 
-            },
-            attack: function() { 
-                this.playTone(200, 'triangle', 0.15, 0.1, 50); 
-            }, 
-            crit: function() { 
-                this.playTone(600, 'square', 0.1, 0.05, 1200); 
-            }, 
-            hit: function() { 
-                this.playTone(100, 'triangle', 0.2, 0.15, 50); 
-            },
-            skill: function() { 
-                this.playTone(300, 'sine', 0.4, 0.1, 600); 
-            },
-            levelUp: function() { 
-                const scale = [523.25, 659.25, 783.99, 1046.50]; 
-                scale.forEach((f, i) => { setTimeout(() => this.playTone(f, 'sine', 0.3, 0.1), i * 80); });
-            },
-            win: function() { 
-                [523, 659, 784, 1046, 784, 1046].forEach((f, i) => { setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.1), i * 120); });
-            },
-            lose: function() { 
-                [392, 370, 349, 330].forEach((f, i) => { setTimeout(() => this.playTone(f, 'triangle', 0.4, 0.1), i * 300); });
-            },
-            coin: function() { 
-                this.playTone(1318, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(1975, 'sine', 0.2, 0.05), 80); 
-            },
-            heal: function() { 
-                this.playTone(400, 'sine', 0.6, 0.1, 800);
-            },
-            powerUp: function() { 
-                this.playTone(440, 'sine', 0.1, 0.1); 
-                setTimeout(() => this.playTone(554, 'sine', 0.1, 0.1), 60); 
-                setTimeout(() => this.playTone(659, 'sine', 0.2, 0.1), 120); 
-            }
+            correct: function() { this.playTone(880, 'sine', 0.2, 0.1); setTimeout(() => this.playTone(1108, 'sine', 0.3, 0.1), 50); },
+            wrong: function() { this.playTone(150, 'triangle', 0.3, 0.15, 100); },
+            click: function() { this.playTone(1200, 'sine', 0.03, 0.02); },
+            attack: function() { this.playTone(200, 'triangle', 0.15, 0.1, 50); }, 
+            crit: function() { this.playTone(600, 'square', 0.1, 0.05, 1200); }, 
+            hit: function() { this.playTone(100, 'triangle', 0.2, 0.15, 50); },
+            skill: function() { this.playTone(300, 'sine', 0.4, 0.1, 600); },
+            levelUp: function() { [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.3, 0.1), i * 80)); },
+            win: function() { [523, 659, 784, 1046, 784, 1046].forEach((f, i) => setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.1), i * 120)); },
+            lose: function() { [392, 370, 349, 330].forEach((f, i) => setTimeout(() => this.playTone(f, 'triangle', 0.4, 0.1), i * 300)); },
+            coin: function() { this.playTone(1318, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(1975, 'sine', 0.2, 0.05), 80); },
+            heal: function() { this.playTone(400, 'sine', 0.6, 0.1, 800); },
+            powerUp: function() { this.playTone(440, 'sine', 0.1, 0.1); setTimeout(() => this.playTone(554, 'sine', 0.1, 0.1), 60); setTimeout(() => this.playTone(659, 'sine', 0.2, 0.1), 120); }
         };
 
         // --- 📚 Data & Utils ---
@@ -171,365 +125,223 @@
             { id: '25', code: 'X', name: '難' }
         ];
 
-        // 📚 Expanded & Corrected Question Bank
+        const THEMES = {
+            FOREST: { bg: 'bg-gradient-to-b from-sky-300 to-blue-100', road: 'from-slate-700 to-slate-900', decor: Trees }
+        };
+
+        const MONSTER_TYPES = [
+            { name: '史萊姆', hpMod: 0.8, atkMod: 0.8, speedMod: 0.8, color: 'text-green-400', icon: Ghost, effect: 'confusion', effectName: '混亂' },
+            { name: '蝙蝠', hpMod: 0.6, atkMod: 1.2, speedMod: 1.5, color: 'text-purple-400', icon: Wind, effect: 'blind', effectName: '致盲' },
+            { name: '石像鬼', hpMod: 1.5, atkMod: 1.0, speedMod: 0.6, color: 'text-stone-400', icon: Shield, effect: 'silence', effectName: '封印' },
+            { name: '暗影刺客', hpMod: 0.8, atkMod: 1.5, speedMod: 1.2, color: 'text-red-400', icon: Sword, effect: 'blind', effectName: '致盲' },
+            { name: '字靈龍', hpMod: 2.5, atkMod: 1.5, speedMod: 1.0, color: 'text-yellow-400', icon: Crown, isBoss: true, effect: 'silence', effectName: '龍威' },
+            { name: '深淵領主', hpMod: 3.0, atkMod: 1.8, speedMod: 0.8, color: 'text-rose-500', icon: Skull, isBoss: true, effect: 'confusion', effectName: '恐懼' },
+        ];
+
+        // 📚 Corrected Question Bank (Full Cangjie Codes)
         const QUESTIONS = [
-            // A - 日 (A)
-            { mainCode: 'A', char: "晤", code: "AR", hint: "日口" },
-            { mainCode: 'A', char: "旦", code: "AM", hint: "日一" },
-            { mainCode: 'A', char: "暗", code: "AA", hint: "日日" },
-            { mainCode: 'A', char: "曙", code: "AJ", hint: "日十" },
-            { mainCode: 'A', char: "晅", code: "AM", hint: "日一" },
-            { mainCode: 'A', char: "時", code: "AI", hint: "日戈" },
-            { mainCode: 'A', char: "景", code: "AF", hint: "日火" },
-            { mainCode: 'A', char: "照", code: "AF", hint: "日火" },
-            { mainCode: 'A', char: "題", code: "AC", hint: "日金" },
-            { mainCode: 'A', char: "顯", code: "AC", hint: "日金" },
-            { mainCode: 'A', char: "暝", code: "AC", hint: "日金" },
-            { mainCode: 'A', char: "晚", code: "ANAU", hint: "日弓日山" }, 
-            { mainCode: 'A', char: "問", code: "AR", hint: "日口" }, 
+            // A - 日
+            { mainCode: 'A', char: "晤", code: "AMMR", hint: "日一一口" }, { mainCode: 'A', char: "旦", code: "AM", hint: "日一" },
+            { mainCode: 'A', char: "暗", code: "AYTA", hint: "日卜廿日" }, { mainCode: 'A', char: "曙", code: "AWLA", hint: "日田中日" },
+            { mainCode: 'A', char: "晅", code: "AMGM", hint: "日一土一" }, { mainCode: 'A', char: "時", code: "AGDI", hint: "日土木戈" }, 
+            { mainCode: 'A', char: "景", code: "AYRF", hint: "日卜口火" }, { mainCode: 'A', char: "照", code: "ASRF", hint: "日尸口火" },
+            { mainCode: 'A', char: "題", code: "AMBC", hint: "日一月金" }, { mainCode: 'A', char: "暝", code: "ABAC", hint: "日月日金" },
+            { mainCode: 'A', char: "晚", code: "ANAU", hint: "日弓日山" }, { mainCode: 'A', char: "問", code: "ANR", hint: "日弓口" }, 
+            { mainCode: 'A', char: "門", code: "AN", hint: "日弓" }, { mainCode: 'A', char: "易", code: "APH", hint: "日心竹" }, 
+            { mainCode: 'A', char: "影", code: "AYHH", hint: "日卜竹竹" }, { mainCode: 'A', char: "即", code: "AIL", hint: "日戈中" },
 
-            // B - 月 (B)
-            { mainCode: 'B', char: "朋", code: "BB", hint: "月月" },
-            { mainCode: 'B', char: "賄", code: "BB", hint: "月月" }, 
-            { mainCode: 'B', char: "且", code: "BM", hint: "月一" },
-            { mainCode: 'B', char: "賠", code: "BR", hint: "月口" },
-            { mainCode: 'B', char: "炙", code: "BF", hint: "月火" },
-            { mainCode: 'B', char: "胳", code: "BR", hint: "月口" },
-            { mainCode: 'B', char: "骨", code: "BB", hint: "月月" },
-            { mainCode: 'B', char: "臉", code: "BM", hint: "月一" }, 
-            { mainCode: 'B', char: "貂", code: "BR", hint: "月口" },
-            { mainCode: 'B', char: "貊", code: "BA", hint: "月日" },
-            { mainCode: 'B', char: "膾", code: "BA", hint: "月日" },
-            { mainCode: 'B', char: "周", code: "BR", hint: "月口" },
-            { mainCode: 'B', char: "貼", code: "BR", hint: "月口" },
-            { mainCode: 'B', char: "賭", code: "BA", hint: "月日" },
-            { mainCode: 'B', char: "膽", code: "BR", hint: "月口" }, 
-            { mainCode: 'B', char: "具", code: "BC", hint: "月金" },
-            { mainCode: 'B', char: "賺", code: "BC", hint: "月金" }, 
-            { mainCode: 'B', char: "肚", code: "BG", hint: "月土" },
-            { mainCode: 'B', char: "睦", code: "BG", hint: "月土" },
-            { mainCode: 'B', char: "貍", code: "BG", hint: "月土" },
-            { mainCode: 'B', char: "財", code: "BC", hint: "月金" },
-            { mainCode: 'B', char: "腸", code: "BH", hint: "月竹" },
-            { mainCode: 'B', char: "冠", code: "BI", hint: "月戈" },
-            { mainCode: 'B', char: "腳", code: "BL", hint: "月中" },
+            // B - 月
+            { mainCode: 'B', char: "朋", code: "BB", hint: "月月" }, { mainCode: 'B', char: "賄", code: "BUKB", hint: "月山大月" }, 
+            { mainCode: 'B', char: "且", code: "BM", hint: "月一" }, { mainCode: 'B', char: "賠", code: "BUYR", hint: "月山卜口" }, 
+            { mainCode: 'B', char: "炙", code: "BKF", hint: "月大火" }, { mainCode: 'B', char: "骨", code: "BBB", hint: "月月月" },
+            { mainCode: 'B', char: "臉", code: "BOMM", hint: "月人人一" }, { mainCode: 'B', char: "貼", code: "BUYR", hint: "月山卜口" }, 
+            { mainCode: 'B', char: "賭", code: "BUJA", hint: "月山十日" }, { mainCode: 'B', char: "膽", code: "BNCR", hint: "月弓金口" }, 
+            { mainCode: 'B', char: "具", code: "BMC", hint: "月一金" }, { mainCode: 'B', char: "賺", code: "BUTXC", hint: "月山廿難金" }, 
+            { mainCode: 'B', char: "肚", code: "BG", hint: "月土" }, { mainCode: 'B', char: "睦", code: "BUG", hint: "月山土" },
+            { mainCode: 'B', char: "財", code: "BUD", hint: "月山木" }, { mainCode: 'B', char: "冠", code: "BMUI", hint: "月一山戈" },
+            { mainCode: 'B', char: "腳", code: "BGIL", hint: "月土戈中" }, { mainCode: 'B', char: "剛", code: "BKLN", hint: "月大中弓" },
 
-            // C - 金 (C)
-            { mainCode: 'C', char: "錯", code: "CA", hint: "金日" }, 
-            { mainCode: 'C', char: "銷", code: "CB", hint: "金月" }, 
-            { mainCode: 'C', char: "鋪", code: "CB", hint: "金月" }, 
-            { mainCode: 'C', char: "曾", code: "CA", hint: "金日" },
-            { mainCode: 'C', char: "鑽", code: "CC", hint: "金金" }, 
-            { mainCode: 'C', char: "鎖", code: "CC", hint: "金金" }, 
-            { mainCode: 'C', char: "鋰", code: "CG", hint: "金土" }, 
-            { mainCode: 'C', char: "鈕", code: "CG", hint: "金土" }, 
-            { mainCode: 'C', char: "分", code: "CH", hint: "金竹" },
-            { mainCode: 'C', char: "弟", code: "CH", hint: "金竹" },
-            { mainCode: 'C', char: "公", code: "CI", hint: "金戈" },
-            { mainCode: 'C', char: "錢", code: "CI", hint: "金戈" },
-            { mainCode: 'C', char: "父", code: "CK", hint: "金大" },
-            { mainCode: 'C', char: "貴", code: "CC", hint: "金金" }, 
-            { mainCode: 'C', char: "費", code: "CC", hint: "金金" },
-            { mainCode: 'C', char: "鍍", code: "CE", hint: "金水" },
+            // C - 金
+            { mainCode: 'C', char: "錯", code: "CTA", hint: "金廿日" }, { mainCode: 'C', char: "銷", code: "CFB", hint: "金火月" }, 
+            { mainCode: 'C', char: "鋪", code: "CIJB", hint: "金戈十月" }, { mainCode: 'C', char: "曾", code: "CWA", hint: "金田日" },
+            { mainCode: 'C', char: "鑽", code: "CHUC", hint: "金竹山金" }, { mainCode: 'C', char: "鎖", code: "CFBC", hint: "金火月金" }, 
+            { mainCode: 'C', char: "錢", code: "CII", hint: "金戈戈" }, { mainCode: 'C', char: "鍍", code: "CITOE", hint: "金戈廿人水" },
+            { mainCode: 'C', char: "鋰", code: "CWG", hint: "金田土" }, { mainCode: 'C', char: "鈕", code: "CNG", hint: "金弓土" }, 
+            { mainCode: 'C', char: "分", code: "CSH", hint: "金尸竹" }, { mainCode: 'C', char: "弟", code: "CNH", hint: "金弓竹" }, 
+            { mainCode: 'C', char: "父", code: "CK", hint: "金大" }, { mainCode: 'C', char: "卻", code: "CRIL", hint: "金口戈中" },
 
-            // D - 木 (D)
-            { mainCode: 'D', char: "柏", code: "DA", hint: "木日" },
-            { mainCode: 'D', char: "橋", code: "DB", hint: "木月" },
-            { mainCode: 'D', char: "棉", code: "DB", hint: "木月" },
-            { mainCode: 'D', char: "構", code: "DB", hint: "木月" },
-            { mainCode: 'D', char: "桶", code: "DB", hint: "木月" },
-            { mainCode: 'D', char: "賴", code: "DC", hint: "木金" },
-            { mainCode: 'D', char: "櫃", code: "DL", hint: "木中" }, 
-            { mainCode: 'D', char: "橫", code: "DC", hint: "木金" },
-            { mainCode: 'D', char: "棋", code: "DC", hint: "木金" },
-            { mainCode: 'D', char: "李", code: "DD", hint: "木木" }, 
-            { mainCode: 'D', char: "杜", code: "DG", hint: "木土" },
-            { mainCode: 'D', char: "枉", code: "DG", hint: "木土" },
-            { mainCode: 'D', char: "柱", code: "DG", hint: "木土" },
-            { mainCode: 'D', char: "杯", code: "DF", hint: "木火" },
-            { mainCode: 'D', char: "禁", code: "DF", hint: "木火" },
-            { mainCode: 'D', char: "機", code: "DI", hint: "木戈" },
-            { mainCode: 'D', char: "字", code: "JD", hint: "十木" }, 
-            { mainCode: 'D', char: "案", code: "JD", hint: "十木" }, 
-            { mainCode: 'D', char: "校", code: "DK", hint: "木大" },
-            { mainCode: 'D', char: "來", code: "DO", hint: "木人" },
-            { mainCode: 'D', char: "想", code: "DP", hint: "木心" },
+            // D - 木
+            { mainCode: 'D', char: "柏", code: "DHA", hint: "木竹日" }, { mainCode: 'D', char: "橋", code: "DHKB", hint: "木竹大月" },
+            { mainCode: 'D', char: "賴", code: "DLBUC", hint: "木中月山金" }, { mainCode: 'D', char: "櫃", code: "DSLC", hint: "木尸中金" }, 
+            { mainCode: 'D', char: "橫", code: "DTLC", hint: "木廿中金" }, { mainCode: 'D', char: "棋", code: "DTMC", hint: "木廿一金" }, 
+            { mainCode: 'D', char: "杜", code: "DG", hint: "木土" }, { mainCode: 'D', char: "杯", code: "DMF", hint: "木一火" },
+            { mainCode: 'D', char: "禁", code: "DDMMF", hint: "木木一一火" }, { mainCode: 'D', char: "機", code: "DVII", hint: "木女戈戈" },
+            { mainCode: 'D', char: "想", code: "DBUP", hint: "木月山心" }, { mainCode: 'D', char: "整", code: "DLMK", hint: "木中一大" }, 
 
-            // E - 水 (E)
-            { mainCode: 'E', char: "波", code: "ED", hint: "水木" }, 
-            { mainCode: 'E', char: "湖", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "淇", code: "EC", hint: "水金" },
-            { mainCode: 'E', char: "潛", code: "EA", hint: "水日" },
-            { mainCode: 'E', char: "泊", code: "EA", hint: "水日" },
-            { mainCode: 'E', char: "澗", code: "EA", hint: "水日" },
-            { mainCode: 'E', char: "溝", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "滿", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "消", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "潮", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "滑", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "淪", code: "EB", hint: "水月" },
-            { mainCode: 'E', char: "深", code: "ED", hint: "水木" },
-            { mainCode: 'E', char: "淨", code: "ED", hint: "水木" },
-            { mainCode: 'E', char: "染", code: "ED", hint: "水木" },
-            { mainCode: 'E', char: "游", code: "ED", hint: "水木" },
-            { mainCode: 'E', char: "梁", code: "ED", hint: "水木" },
-            { mainCode: 'E', char: "注", code: "EG", hint: "水土" },
-            { mainCode: 'E', char: "灘", code: "EG", hint: "水土" },
-            { mainCode: 'E', char: "報", code: "GE", hint: "土水" }, 
-            { mainCode: 'E', char: "度", code: "IE", hint: "戈水" }, 
-            { mainCode: 'E', char: "被", code: "LE", hint: "中水" }, 
-            { mainCode: 'E', char: "技", code: "QE", hint: "手水" }, 
-            { mainCode: 'E', char: "湯", code: "EH", hint: "水竹" },
-            { mainCode: 'E', char: "沙", code: "EH", hint: "水竹" },
-            { mainCode: 'E', char: "決", code: "EK", hint: "水大" },
+            // E - 水
+            { mainCode: 'E', char: "波", code: "EDHE", hint: "水木竹水" }, { mainCode: 'E', char: "湖", code: "EJRB", hint: "水十口月" },
+            { mainCode: 'E', char: "淇", code: "ETMC", hint: "水廿一金" }, { mainCode: 'E', char: "潛", code: "EQOA", hint: "水手人日" },
+            { mainCode: 'E', char: "泊", code: "EHA", hint: "水竹日" }, { mainCode: 'E', char: "澗", code: "EANA", hint: "水日弓日" },
+            { mainCode: 'E', char: "溝", code: "ETTB", hint: "水廿廿月" }, { mainCode: 'E', char: "滿", code: "ETMB", hint: "水廿一月" },
+            { mainCode: 'E', char: "消", code: "EFB", hint: "水火月" }, { mainCode: 'E', char: "潮", code: "EJJB", hint: "水十十月" },
+            { mainCode: 'E', char: "滑", code: "EBBB", hint: "水月月月" }, { mainCode: 'E', char: "淪", code: "EOMB", hint: "水人一月" },
+            { mainCode: 'E', char: "深", code: "EBCD", hint: "水月金木" }, { mainCode: 'E', char: "淨", code: "EBSD", hint: "水月尸木" },
+            { mainCode: 'E', char: "染", code: "END", hint: "水弓木" }, { mainCode: 'E', char: "游", code: "EYSD", hint: "水卜尸木" },
+            { mainCode: 'E', char: "梁", code: "EID", hint: "水戈木" }, { mainCode: 'E', char: "注", code: "EYG", hint: "水卜土" }, 
+            { mainCode: 'E', char: "灘", code: "ETOG", hint: "水廿人土" }, { mainCode: 'E', char: "湯", code: "EASH", hint: "水日尸竹" },
+            { mainCode: 'E', char: "沙", code: "EFH", hint: "水火竹" }, 
 
-            // F - 火 (F)
-            { mainCode: 'F', char: "精", code: "FB", hint: "火月" },
-            { mainCode: 'F', char: "嘗", code: "FA", hint: "火日" },
-            { mainCode: 'F', char: "常", code: "FB", hint: "火月" },
-            { mainCode: 'F', char: "幣", code: "FB", hint: "火月" },
-            { mainCode: 'F', char: "煩", code: "FC", hint: "火金" },
-            { mainCode: 'F', char: "賞", code: "FC", hint: "火金" },
-            { mainCode: 'F', char: "類", code: "FC", hint: "火金" },
-            { mainCode: 'F', char: "米", code: "FD", hint: "火木" },
-            { mainCode: 'F', char: "煤", code: "FD", hint: "火木" },
-            { mainCode: 'F', char: "榮", code: "FD", hint: "火木" },
-            { mainCode: 'F', char: "燦", code: "FE", hint: "火水" },
-            { mainCode: 'F', char: "堂", code: "FG", hint: "火土" },
-            { mainCode: 'F', char: "糧", code: "FD", hint: "火木" },
-            { mainCode: 'F', char: "煙", code: "FG", hint: "火土" },
-            { mainCode: 'F', char: "耀", code: "FG", hint: "火土" },
-            { mainCode: 'F', char: "秋", code: "HF", hint: "竹火" }, 
-            { mainCode: 'F', char: "鳥", code: "HF", hint: "竹火" }, 
-            { mainCode: 'F', char: "為", code: "IF", hint: "戈火" }, 
-            { mainCode: 'F', char: "察", code: "JF", hint: "十火" }, 
-            { mainCode: 'F', char: "小", code: "NC", hint: "弓金" }, 
-            { mainCode: 'F', char: "孫", code: "NF", hint: "弓火" }, 
-            { mainCode: 'F', char: "魚", code: "NF", hint: "弓火" }, 
+            // F - 火
+            { mainCode: 'F', char: "精", code: "FDQMB", hint: "火木手一月" }, { mainCode: 'F', char: "嘗", code: "FBRPA", hint: "火月口心日" },
+            { mainCode: 'F', char: "常", code: "FBLB", hint: "火月中月" }, { mainCode: 'F', char: "幣", code: "FKLB", hint: "火大中月" },
+            { mainCode: 'F', char: "煩", code: "FMBC", hint: "火一月金" }, { mainCode: 'F', char: "賞", code: "FBRBC", hint: "火月口月金" },
+            { mainCode: 'F', char: "類", code: "FDMBC", hint: "火木一月金" }, { mainCode: 'F', char: "米", code: "FD", hint: "火木" },
+            { mainCode: 'F', char: "煤", code: "FDTM", hint: "火木廿一" }, { mainCode: 'F', char: "榮", code: "FFBD", hint: "火火月木" },
+            { mainCode: 'F', char: "燦", code: "FYED", hint: "火卜水木" }, { mainCode: 'F', char: "然", code: "BKF", hint: "月大火" }, 
+            { mainCode: 'F', char: "祭", code: "BOF", hint: "月人火" }, { mainCode: 'F', char: "杯", code: "DMF", hint: "木一火" }, 
+            { mainCode: 'F', char: "禁", code: "DDMMF", hint: "木木一一火" }, 
 
-            // G - 土 (G)
-            { mainCode: 'G', char: "增", code: "GA", hint: "土日" },
-            { mainCode: 'G', char: "幫", code: "GB", hint: "土月" },
-            { mainCode: 'G', char: "熱", code: "GF", hint: "土火" },
-            { mainCode: 'G', char: "地", code: "GD", hint: "土木" },
-            { mainCode: 'G', char: "埔", code: "GI", hint: "土戈" },
-            { mainCode: 'G', char: "圾", code: "GE", hint: "土水" }, 
-            { mainCode: 'G', char: "堆", code: "GG", hint: "土土" },
-            { mainCode: 'G', char: "去", code: "GI", hint: "土戈" },
-            { mainCode: 'G', char: "至", code: "MG", hint: "一土" }, 
-            { mainCode: 'G', char: "推", code: "QG", hint: "手土" }, 
+            // G - 土
+            { mainCode: 'G', char: "增", code: "GCWA", hint: "土金田日" }, { mainCode: 'G', char: "幫", code: "GQBL", hint: "土手月中" },
+            { mainCode: 'G', char: "熱", code: "GCIF", hint: "土金戈火" }, { mainCode: 'G', char: "地", code: "GPD", hint: "土心木" },
+            { mainCode: 'G', char: "埔", code: "GIB", hint: "土戈月" }, { mainCode: 'G', char: "圾", code: "GNE", hint: "土弓水" }, 
+            { mainCode: 'G', char: "報", code: "GTLE", hint: "土廿中水" }, { mainCode: 'G', char: "堆", code: "GOG", hint: "土人土" },
+            { mainCode: 'G', char: "去", code: "GI", hint: "土戈" }, { mainCode: 'G', char: "再", code: "GB", hint: "土月" }, 
+            { mainCode: 'G', char: "整", code: "GK", hint: "土大" }, { mainCode: 'G', char: "均", code: "GG", hint: "土土" }, 
+            { mainCode: 'G', char: "型", code: "GCN", hint: "土金弓" }, { mainCode: 'G', char: "場", code: "GASH", hint: "土日尸竹" },
+            { mainCode: 'G', char: "彭", code: "GTHHH", hint: "土廿竹竹竹" }, 
 
-            // H - 竹 (H)
-            { mainCode: 'H', char: "白", code: "HA", hint: "竹日" },
-            { mainCode: 'H', char: "香", code: "HA", hint: "竹日" },
-            { mainCode: 'H', char: "禾", code: "HD", hint: "竹木" },
-            { mainCode: 'H', char: "與", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "顧", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "須", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "贊", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "質", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "興", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "積", code: "HC", hint: "竹金" },
-            { mainCode: 'H', char: "重", code: "HG", hint: "竹土" },
-            { mainCode: 'H', char: "種", code: "HG", hint: "竹土" },
-            { mainCode: 'H', char: "往", code: "HG", hint: "竹土" },
-            { mainCode: 'H', char: "程", code: "HG", hint: "竹土" },
-            { mainCode: 'H', char: "皇", code: "HA", hint: "竹日" },
-            { mainCode: 'H', char: "易", code: "AH", hint: "日竹" }, 
-            { mainCode: 'H', char: "影", code: "AH", hint: "日竹" }, 
-            { mainCode: 'H', char: "所", code: "HL", hint: "竹中" },
-            { mainCode: 'H', char: "初", code: "LH", hint: "中竹" }, 
-            { mainCode: 'H', char: "第", code: "HH", hint: "竹竹" },
-            { mainCode: 'H', char: "身", code: "HH", hint: "竹竹" },
-            { mainCode: 'H', char: "物", code: "HH", hint: "竹竹" },
-            { mainCode: 'H', char: "秒", code: "HH", hint: "竹竹" },
-            { mainCode: 'H', char: "我", code: "HI", hint: "竹戈" },
-            { mainCode: 'H', char: "得", code: "HI", hint: "竹戈" },
-            { mainCode: 'H', char: "等", code: "HI", hint: "竹戈" },
-            { mainCode: 'H', char: "私", code: "HI", hint: "竹戈" },
-            { mainCode: 'H', char: "參", code: "IH", hint: "戈竹" }, 
-            { mainCode: 'H', char: "呀", code: "RH", hint: "口竹" }, 
-            { mainCode: 'H', char: "刀", code: "SH", hint: "尸竹" }, 
+            // H - 竹
+            { mainCode: 'H', char: "白", code: "HA", hint: "竹日" }, { mainCode: 'H', char: "香", code: "HDA", hint: "竹木日" },
+            { mainCode: 'H', char: "禾", code: "HD", hint: "竹木" }, { mainCode: 'H', char: "與", code: "HXC", hint: "竹難金" },
+            { mainCode: 'H', char: "顧", code: "HMBC", hint: "竹一月金" }, { mainCode: 'H', char: "須", code: "HHMBC", hint: "竹竹一月金" },
+            { mainCode: 'H', char: "贊", code: "HUOC", hint: "竹山人金" }, { mainCode: 'H', char: "質", code: "HFBC", hint: "竹火月金" },
+            { mainCode: 'H', char: "興", code: "HXBC", hint: "竹難月金" }, { mainCode: 'H', char: "積", code: "HDQC", hint: "竹木手金" },
+            { mainCode: 'H', char: "重", code: "HGMG", hint: "竹土一土" }, { mainCode: 'H', char: "種", code: "HDHG", hint: "竹木竹土" },
+            { mainCode: 'H', char: "往", code: "HOYG", hint: "竹人卜土" }, { mainCode: 'H', char: "程", code: "HDRHG", hint: "竹木口竹土" },
+            { mainCode: 'H', char: "皇", code: "HAG", hint: "竹日土" }, { mainCode: 'H', char: "秋", code: "HDF", hint: "竹木火" },
+            { mainCode: 'H', char: "鳥", code: "HAF", hint: "竹日火" }, { mainCode: 'H', char: "所", code: "HML", hint: "竹一中" },
+            { mainCode: 'H', char: "第", code: "HCNH", hint: "竹金弓竹" }, { mainCode: 'H', char: "身", code: "HXH", hint: "竹難竹" }, 
+            { mainCode: 'H', char: "物", code: "HQPPH", hint: "竹手心心竹" }, { mainCode: 'H', char: "秒", code: "HDCH", hint: "竹木金竹" },
+            { mainCode: 'H', char: "我", code: "HQI", hint: "竹手戈" }, { mainCode: 'H', char: "得", code: "HOAMI", hint: "竹人日一戈" }, 
+            { mainCode: 'H', char: "等", code: "HGDI", hint: "竹土木戈" }, { mainCode: 'H', char: "私", code: "HDI", hint: "竹木戈" }, 
+            { mainCode: 'H', char: "冬", code: "HE", hint: "竹水" }, 
 
-            // I - 戈 (I)
-            { mainCode: 'I', char: "或", code: "IM", hint: "戈一" },
-            { mainCode: 'I', char: "式", code: "IM", hint: "戈一" },
-            { mainCode: 'I', char: "社", code: "IF", hint: "戈火" }, 
-            { mainCode: 'I', char: "冷", code: "IM", hint: "戈一" }, 
-            { mainCode: 'I', char: "冬", code: "YI", hint: "卜戈" }, 
-            { mainCode: 'I', char: "哦", code: "RI", hint: "口戈" }, 
-            { mainCode: 'I', char: "屬", code: "SI", hint: "尸戈" }, 
-            { mainCode: 'I', char: "峨", code: "UI", hint: "山戈" }, 
+            // I - 戈
+            { mainCode: 'I', char: "或", code: "IRM", hint: "戈口一" }, { mainCode: 'I', char: "式", code: "IPM", hint: "戈心一" },
+            { mainCode: 'I', char: "社", code: "IFG", hint: "戈火土" }, { mainCode: 'I', char: "參", code: "IIH", hint: "戈戈竹" }, 
+            { mainCode: 'I', char: "冷", code: "IMOII", hint: "戈一人戈戈" }, { mainCode: 'I', char: "為", code: "IKF", hint: "戈大火" }, 
+            { mainCode: 'I', char: "度", code: "ITE", hint: "戈廿水" }, 
 
-            // J - 十 (J)
-            { mainCode: 'J', char: "者", code: "JA", hint: "十日" },
-            { mainCode: 'J', char: "車", code: "JJ", hint: "十十" },
-            { mainCode: 'J', char: "南", code: "JJ", hint: "十十" },
-            { mainCode: 'J', char: "真", code: "JC", hint: "十金" },
-            { mainCode: 'J', char: "實", code: "JC", hint: "十金" },
-            { mainCode: 'J', char: "寶", code: "JC", hint: "十金" },
-            { mainCode: 'J', char: "宇", code: "JM", hint: "十一" },
-            { mainCode: 'J', char: "寫", code: "JM", hint: "十一" },
-            { mainCode: 'J', char: "室", code: "JM", hint: "十一" },
-            { mainCode: 'J', char: "博", code: "JI", hint: "十戈" },
-            { mainCode: 'J', char: "專", code: "JI", hint: "十戈" },
-            { mainCode: 'J', char: "都", code: "JL", hint: "十中" },
-            { mainCode: 'J', char: "空", code: "JM", hint: "十一" },
-            { mainCode: 'J', char: "陣", code: "NJ", hint: "弓十" }, 
-            { mainCode: 'J', char: "教", code: "JK", hint: "十大" },
-            { mainCode: 'J', char: "聽", code: "JG", hint: "十土" },
+            // J - 十
+            { mainCode: 'J', char: "者", code: "JKA", hint: "十大日" }, { mainCode: 'J', char: "車", code: "JJ", hint: "十十" },
+            { mainCode: 'J', char: "南", code: "JBJ", hint: "十月十" }, { mainCode: 'J', char: "真", code: "JBC", hint: "十月金" },
+            { mainCode: 'J', char: "實", code: "JBUC", hint: "十月山金" }, { mainCode: 'J', char: "寶", code: "JMBC", hint: "十一月金" },
+            { mainCode: 'J', char: "宇", code: "JMD", hint: "十一木" }, { mainCode: 'J', char: "字", code: "JND", hint: "十弓木" },
+            { mainCode: 'J', char: "案", code: "JVD", hint: "十女木" }, { mainCode: 'J', char: "寫", code: "JHKF", hint: "十竹大火" },
+            { mainCode: 'J', char: "察", code: "JBOF", hint: "十月人火" }, { mainCode: 'J', char: "室", code: "JMIG", hint: "十一戈土" },
+            { mainCode: 'J', char: "博", code: "JIBI", hint: "十戈月戈" }, { mainCode: 'J', char: "專", code: "JIDI", hint: "十戈木戈" },
+            { mainCode: 'J', char: "都", code: "JAL", hint: "十日中" }, { mainCode: 'J', char: "空", code: "JM", hint: "十一" },
+            { mainCode: 'J', char: "教", code: "JK", hint: "十大" }, { mainCode: 'J', char: "聽", code: "JSMIP", hint: "十尸一戈心" }, 
 
-            // K - 大 (K)
-            { mainCode: 'K', char: "有", code: "KB", hint: "大月" },
-            { mainCode: 'K', char: "痛", code: "KB", hint: "大月" },
-            { mainCode: 'K', char: "帶", code: "KB", hint: "大月" },
-            { mainCode: 'K', char: "希", code: "KB", hint: "大月" },
-            { mainCode: 'K', char: "在", code: "KG", hint: "大土" },
-            { mainCode: 'K', char: "太", code: "KI", hint: "大戈" },
-            { mainCode: 'K', char: "便", code: "OK", hint: "人大" }, 
-            { mainCode: 'K', char: "做", code: "OK", hint: "人大" }, 
-            { mainCode: 'K', char: "使", code: "OK", hint: "人大" }, 
-            { mainCode: 'K', char: "快", code: "PK", hint: "心大" }, 
-            { mainCode: 'K', char: "換", code: "QK", hint: "手大" }, 
-            { mainCode: 'K', char: "哭", code: "RK", hint: "口大" }, 
-            { mainCode: 'K', char: "默", code: "WK", hint: "田大" }, 
-            { mainCode: 'K', char: "凶", code: "UK", hint: "山大" }, 
-            { mainCode: 'K', char: "絞", code: "VK", hint: "女大" }, 
+            // K - 大
+            { mainCode: 'K', char: "有", code: "KB", hint: "大月" }, { mainCode: 'K', char: "痛", code: "KNIB", hint: "大弓戈月" },
+            { mainCode: 'K', char: "帶", code: "KPNB", hint: "大心月月" }, { mainCode: 'K', char: "希", code: "KKB", hint: "大大月" },
+            { mainCode: 'K', char: "在", code: "KLG", hint: "大中土" }, { mainCode: 'K', char: "太", code: "KI", hint: "大戈" },
+            { mainCode: 'K', char: "左", code: "KM", hint: "大一" }, 
 
-            // L - 中 (L)
-            { mainCode: 'L', char: "即", code: "AL", hint: "日中" }, 
-            { mainCode: 'L', char: "卻", code: "CL", hint: "金中" }, 
-            { mainCode: 'L', char: "書", code: "LA", hint: "中日" },
-            { mainCode: 'L', char: "貴", code: "LC", hint: "中金" },
-            { mainCode: 'L', char: "費", code: "LC", hint: "中金" },
-            { mainCode: 'L', char: "裡", code: "LG", hint: "中土" },
-            { mainCode: 'L', char: "數", code: "LK", hint: "中大" },
-            { mainCode: 'L', char: "史", code: "LK", hint: "中大" },
-            { mainCode: 'L', char: "央", code: "LK", hint: "中大" },
-            { mainCode: 'L', char: "面", code: "ML", hint: "一中" }, 
-            { mainCode: 'L', char: "忠", code: "LP", hint: "中心" },
-            { mainCode: 'L', char: "悲", code: "LP", hint: "中心" },
-            { mainCode: 'L', char: "哪", code: "RL", hint: "口中" }, 
-            { mainCode: 'L', char: "閉", code: "LS", hint: "中尸" },
+            // L - 中
+            { mainCode: 'L', char: "書", code: "LGA", hint: "中土日" }, { mainCode: 'L', char: "貴", code: "LMBC", hint: "中一月金" }, 
+            { mainCode: 'L', char: "費", code: "LNBC", hint: "中弓月金" }, { mainCode: 'L', char: "被", code: "LDHE", hint: "中木竹水" }, 
+            { mainCode: 'L', char: "裡", code: "LWG", hint: "中田土" }, { mainCode: 'L', char: "初", code: "LCSH", hint: "中金尸竹" }, 
+            { mainCode: 'L', char: "數", code: "LVOK", hint: "中女人大" }, { mainCode: 'L', char: "史", code: "JL", hint: "中大" }, 
+            { mainCode: 'L', char: "央", code: "LBK", hint: "中月大" }, { mainCode: 'L', char: "忠", code: "LP", hint: "中心" },
+            { mainCode: 'L', char: "悲", code: "LMYP", hint: "中一卜心" }, { mainCode: 'L', char: "閉", code: "LS", hint: "中尸" }, 
 
-            // M - 一 (M)
-            { mainCode: 'M', char: "百", code: "MA", hint: "一日" },
-            { mainCode: 'M', char: "再", code: "GB", hint: "土月" }, 
-            { mainCode: 'M', char: "整", code: "GK", hint: "土大" }, 
-            { mainCode: 'M', char: "均", code: "GG", hint: "土土" }, 
-            { mainCode: 'M', char: "左", code: "KM", hint: "大一" }, 
-            { mainCode: 'M', char: "天", code: "MK", hint: "一大" },
-            { mainCode: 'M', char: "型", code: "GN", hint: "土弓" }, 
-            { mainCode: 'M', char: "住", code: "OG", hint: "人土" }, 
-            { mainCode: 'M', char: "坐", code: "OG", hint: "人土" }, 
-            { mainCode: 'M', char: "恐", code: "MP", hint: "一心" },
-            { mainCode: 'M', char: "屋", code: "SG", hint: "尸土" }, 
-            { mainCode: 'M', char: "望", code: "YG", hint: "卜土" }, 
-            { mainCode: 'M', char: "疊", code: "WM", hint: "田一" }, 
+            // M - 一
+            { mainCode: 'M', char: "百", code: "MA", hint: "一日" }, { mainCode: 'M', char: "天", code: "MK", hint: "一大" }, 
+            { mainCode: 'M', char: "至", code: "MIG", hint: "一戈土" }, { mainCode: 'M', char: "面", code: "MWYL", hint: "一田卜中" },
+            { mainCode: 'M', char: "恐", code: "MNIP", hint: "一弓戈心" }, 
 
-            // N - 弓 (N)
-            { mainCode: 'N', char: "鈕", code: "CG", hint: "金土" }, // Starts C
-            { mainCode: 'N', char: "圾", code: "GE", hint: "土水" }, // Starts G
-            { mainCode: 'N', char: "陌", code: "NA", hint: "弓日" },
-            { mainCode: 'N', char: "門", code: "AN", hint: "日弓" }, // Starts A
-            { mainCode: 'N', char: "隨", code: "NB", hint: "弓月" },
-            { mainCode: 'N', char: "剛", code: "BN", hint: "月弓" }, // Starts B
-            { mainCode: 'N', char: "子", code: "ND", hint: "弓木" },
-            { mainCode: 'N', char: "除", code: "NO", hint: "弓人" },
-            { mainCode: 'N', char: "陽", code: "NA", hint: "弓日" },
-            { mainCode: 'N', char: "吃", code: "RN", hint: "口弓" }, // Starts R
+            // N - 弓
+            { mainCode: 'N', char: "鈕", code: "CNG", hint: "金弓土" }, { mainCode: 'N', char: "陌", code: "NLMA", hint: "弓中一日" }, 
+            { mainCode: 'N', char: "隨", code: "NLKB", hint: "弓中大月" }, { mainCode: 'N', char: "子", code: "ND", hint: "弓木" }, 
+            { mainCode: 'N', char: "除", code: "NLOD", hint: "弓中人木" }, { mainCode: 'N', char: "發", code: "NOHNE", hint: "弓人竹水" }, 
+            { mainCode: 'N', char: "孫", code: "NDNF", hint: "弓木弓火" }, { mainCode: 'N', char: "魚", code: "NWF", hint: "弓田火" }, 
+            { mainCode: 'N', char: "陣", code: "NLJJ", hint: "弓中十十" }, { mainCode: 'N', char: "陽", code: "NLAM", hint: "弓中日一" }, 
 
-            // O - 人 (O)
-            { mainCode: 'O', char: "臉", code: "BM", hint: "月一" }, // Starts B
-            { mainCode: 'O', char: "你", code: "OF", hint: "人火" },
-            { mainCode: 'O', char: "他", code: "OD", hint: "人木" },
-            { mainCode: 'O', char: "休", code: "OD", hint: "人木" },
-            { mainCode: 'O', char: "會", code: "OA", hint: "人日" },
-            { mainCode: 'O', char: "借", code: "OA", hint: "人日" },
+            // O - 人
+            { mainCode: 'O', char: "你", code: "ONF", hint: "人弓火" }, { mainCode: 'O', char: "他", code: "OPD", hint: "人心木" },
+            { mainCode: 'O', char: "休", code: "OD", hint: "人木" }, { mainCode: 'O', char: "會", code: "OMA", hint: "人一日" },
+            { mainCode: 'O', char: "便", code: "OMK", hint: "人一大" }, { mainCode: 'O', char: "做", code: "OJRK", hint: "人十口大" },
+            { mainCode: 'O', char: "使", code: "OJLK", hint: "人十中大" }, { mainCode: 'O', char: "借", code: "OTA", hint: "人廿日" },
+            { mainCode: 'O', char: "來", code: "DOO", hint: "木人人" }, // D start
+            { mainCode: 'O', char: "住", code: "OYG", hint: "人卜土" },
+            { mainCode: 'O', char: "坐", code: "OOG", hint: "人人土" },
 
-            // P - 心 (P)
-            { mainCode: 'P', char: "怕", code: "PA", hint: "心日" },
-            { mainCode: 'P', char: "情", code: "PB", hint: "心月" },
-            { mainCode: 'P', char: "忙", code: "PV", hint: "心女" },
-            { mainCode: 'P', char: "忍", code: "SP", hint: "尸心" }, // Starts S
+            // P - 心
+            { mainCode: 'P', char: "怕", code: "PHA", hint: "心竹日" }, { mainCode: 'P', char: "情", code: "PQMB", hint: "心手一月" },
+            { mainCode: 'P', char: "忙", code: "PYV", hint: "心卜女" }, { mainCode: 'P', char: "忍", code: "SIP", hint: "尸戈心" }, 
+            { mainCode: 'P', char: "快", code: "PDK", hint: "心木大" }, { mainCode: 'P', char: "忽", code: "PPHP", hint: "心心竹心" },
 
-            // Q - 手 (Q)
-            { mainCode: 'Q', char: "提", code: "QO", hint: "手人" }, 
-            { mainCode: 'Q', char: "指", code: "QA", hint: "手日" },
-            { mainCode: 'Q', char: "拍", code: "QA", hint: "手日" },
-            { mainCode: 'Q', char: "掃", code: "QB", hint: "手月" },
-            { mainCode: 'Q', char: "搞", code: "QB", hint: "手月" },
-            { mainCode: 'Q', char: "捕", code: "QI", hint: "手戈" },
-            { mainCode: 'Q', char: "推", code: "QG", hint: "手土" },
-            { mainCode: 'Q', char: "揮", code: "QJ", hint: "手十" },
-            { mainCode: 'Q', char: "擇", code: "QJ", hint: "手十" },
-            { mainCode: 'Q', char: "插", code: "QX", hint: "手難" },
+            // Q - 手
+            { mainCode: 'Q', char: "指", code: "QPA", hint: "手心日" }, { mainCode: 'Q', char: "拍", code: "QHA", hint: "手竹日" },
+            { mainCode: 'Q', char: "掃", code: "QSMB", hint: "手尸一月" }, { mainCode: 'Q', char: "搞", code: "QYRB", hint: "手卜口月" },
+            { mainCode: 'Q', char: "捕", code: "QIJB", hint: "手戈十月" }, { mainCode: 'Q', char: "推", code: "QOG", hint: "手人土" },
+            { mainCode: 'Q', char: "揮", code: "QBJJ", hint: "手月十十" }, { mainCode: 'Q', char: "換", code: "QNBK", hint: "手弓月大" }, 
+            { mainCode: 'Q', char: "擇", code: "QWLJ", hint: "手田中十" }, { mainCode: 'Q', char: "插", code: "QHJX", hint: "手竹十難" },
 
-            // R - 口 (R)
-            { mainCode: 'R', char: "唱", code: "RA", hint: "口日" },
-            { mainCode: 'R', char: "嘴", code: "RB", hint: "口月" },
-            { mainCode: 'R', char: "居", code: "SR", hint: "尸口" }, // Starts S
-            { mainCode: 'R', char: "局", code: "SR", hint: "尸口" }, // Starts S
+            // R - 口
+            { mainCode: 'R', char: "唱", code: "RAA", hint: "口日日" }, { mainCode: 'R', char: "嘴", code: "RYPB", hint: "口卜心月" },
+            { mainCode: 'R', char: "哭", code: "RRIK", hint: "口口戈大" }, { mainCode: 'R', char: "吃", code: "RON", hint: "口人弓" }, 
+            { mainCode: 'R', char: "哪", code: "RSQL", hint: "口尸手中" }, { mainCode: 'R', char: "呀", code: "RMVH", hint: "口一女竹" }, 
+            { mainCode: 'R', char: "哦", code: "RHQI", hint: "口竹手戈" },
 
-            // S - 尸 (S)
-            { mainCode: 'S', char: "層", code: "SA", hint: "尸日" },
-            { mainCode: 'S', char: "圍", code: "WS", hint: "田尸" }, // Starts W
-            { mainCode: 'S', char: "圈", code: "WS", hint: "田尸" }, // Starts W
-            { mainCode: 'S', char: "凹", code: "US", hint: "山尸" }, // Starts U
+            // S - 尸
+            { mainCode: 'S', char: "層", code: "SCWA", hint: "尸金田日" }, { mainCode: 'S', char: "屋", code: "SMIG", hint: "尸一戈土" },
+            { mainCode: 'S', char: "居", code: "SJR", hint: "尸十口" }, { mainCode: 'S', char: "局", code: "SSR", hint: "尸尸口" },
+            { mainCode: 'S', char: "屬", code: "SHYI", hint: "尸竹卜戈" }, { mainCode: 'S', char: "刀", code: "SH", hint: "尸竹" },
 
-            // T - 廿 (T)
-            { mainCode: 'T', char: "昔", code: "TA", hint: "廿日" },
-            { mainCode: 'T', char: "曹", code: "TA", hint: "廿日" },
-            { mainCode: 'T', char: "著", code: "TA", hint: "廿日" },
-            { mainCode: 'T', char: "開", code: "AT", hint: "日廿" }, // Starts A
-            { mainCode: 'T', char: "期", code: "TB", hint: "廿月" },
-            { mainCode: 'T', char: "共", code: "TC", hint: "廿金" },
-            { mainCode: 'T', char: "黃", code: "TC", hint: "廿金" },
-            { mainCode: 'T', char: "鏢", code: "CF", hint: "金火" }, // Starts C
+            // T - 廿
+            { mainCode: 'T', char: "昔", code: "TA", hint: "廿日" }, { mainCode: 'T', char: "曹", code: "TWA", hint: "廿田日" },
+            { mainCode: 'T', char: "著", code: "TJKA", hint: "廿十大日" }, { mainCode: 'T', char: "開", code: "ANT", hint: "日弓廿" }, 
+            { mainCode: 'T', char: "期", code: "TCMC", hint: "廿金一金" }, { mainCode: 'T', char: "共", code: "TC", hint: "廿金" },
+            { mainCode: 'T', char: "黃", code: "TWC", hint: "廿田金" },
 
-            // U - 山 (U)
-            { mainCode: 'U', char: "崩", code: "UB", hint: "山月" },
-            { mainCode: 'U', char: "凱", code: "UU", hint: "山山" },
-            { mainCode: 'U', char: "逆", code: "YY", hint: "卜卜" }, // Starts Y
+            // U - 山
+            { mainCode: 'U', char: "凱", code: "UMTU", hint: "山一廿山" }, { mainCode: 'U', char: "逆", code: "YTU", hint: "卜廿山" }, 
+            { mainCode: 'U', char: "凶", code: "UK", hint: "山大" }, { mainCode: 'U', char: "峨", code: "UHQI", hint: "山竹手戈" },
+            { mainCode: 'U', char: "崩", code: "UBB", hint: "山月月" }, { mainCode: 'U', char: "凹", code: "SSU", hint: "尸尸山" }, 
 
-            // V - 女 (V)
-            { mainCode: 'V', char: "媚", code: "VB", hint: "女月" },
-            { mainCode: 'V', char: "綿", code: "VB", hint: "女月" },
-            { mainCode: 'V', char: "姍", code: "VB", hint: "女月" },
-            { mainCode: 'V', char: "嫻", code: "VD", hint: "女木" },
+            // V - 女
+            { mainCode: 'V', char: "媚", code: "VAHU", hint: "女日竹山" }, { mainCode: 'V', char: "綿", code: "VHAB", hint: "女竹日月" },
+            { mainCode: 'V', char: "姍", code: "VBBT", hint: "女月月廿" }, { mainCode: 'V', char: "嫻", code: "VWD", hint: "女木" }, 
+            { mainCode: 'V', char: "絞", code: "VYCK", hint: "女卜金大" },
 
-            // W - 田 (W)
-            { mainCode: 'W', char: "國", code: "WM", hint: "田一" },
+            // W - 田
+            { mainCode: 'W', char: "疊", code: "WMBBM", hint: "田一月一" }, { mainCode: 'W', char: "圍", code: "WDMQ", hint: "田木一手" },
+            { mainCode: 'W', char: "果", code: "WD", hint: "田木" }, { mainCode: 'W', char: "默", code: "WFIK", hint: "田火戈大" },
+            { mainCode: 'W', char: "圈", code: "WFQU", hint: "田火手山" }, { mainCode: 'W', char: "國", code: "WIRM", hint: "田戈口一" },
 
-            // Y - 卜 (Y)
-            { mainCode: 'Y', char: "退", code: "YV", hint: "卜女" },
-            { mainCode: 'Y', char: "迫", code: "YA", hint: "卜日" },
-            { mainCode: 'Y', char: "桌", code: "YD", hint: "卜木" },
-            { mainCode: 'Y', char: "帝", code: "YB", hint: "卜月" },
-            { mainCode: 'Y', char: "齊", code: "YX", hint: "卜難" },
+            // Y - 卜
+            { mainCode: 'Y', char: "退", code: "YAV", hint: "卜日女" }, { mainCode: 'Y', char: "迫", code: "YHA", hint: "卜竹日" },
+            { mainCode: 'Y', char: "桌", code: "YD", hint: "卜木" }, { mainCode: 'Y', char: "帝", code: "YBJB", hint: "卜月十月" },
+            { mainCode: 'Y', char: "望", code: "YBMG", hint: "卜月一土" }, 
 
-            // X - 難 (X)
-            { mainCode: 'X', char: "臼", code: "HX", hint: "竹難" }, // Starts H
-            { mainCode: 'X', char: "稻", code: "HX", hint: "竹難" }, // Starts H
-            { mainCode: 'X', char: "舂", code: "QX", hint: "手難" }, // Starts Q
-            { mainCode: 'X', char: "舊", code: "TX", hint: "廿難" }, // Starts T
+            // X - 難
+            { mainCode: 'X', char: "臼", code: "HX", hint: "竹難" }, { mainCode: 'X', char: "稻", code: "HDBX", hint: "竹木月難" }, 
+            { mainCode: 'X', char: "舂", code: "QKX", hint: "手大難" }, { mainCode: 'X', char: "插", code: "QHJX", hint: "手竹十難" },
+            { mainCode: 'X', char: "舊", code: "TOHX", hint: "廿人竹難" }, { mainCode: 'X', char: "齊", code: "YX", hint: "卜難" }, 
         ];
 
         // Decoy generator
         const generateDecoys = (targetQ) => {
-            const all = QUESTIONS.filter(q => q.code !== targetQ.code);
+            const all = QUESTIONS.filter(q => q.code && q.code !== targetQ.code);
             return all.sort(() => Math.random() - 0.5).slice(0, 3).map(q => ({
                 char: q.char,
                 code: q.code
             }));
         };
-
-        const CATEGORIES = [
-            { id: 'all', name: '全部', icon: Star, color: 'bg-purple-100 text-purple-600' },
-            { id: 'nature', name: '自然', icon: Leaf, color: 'bg-green-100 text-green-600' },
-            { id: 'people', name: '人物', icon: Smile, color: 'bg-amber-100 text-amber-600' },
-            { id: 'life', name: '生活', icon: Coffee, color: 'bg-blue-100 text-blue-600' },
-        ];
 
         const META_UPGRADES = {
             hp: { name: "生命之源", baseCost: 100, costMult: 1.5, effectVal: 10, icon: Heart, desc: "初始 HP +10" },
@@ -553,15 +365,6 @@
             { id: 'greedy_pot', name: '貪婪之壺', type: 'special', val: 0, tier: 3, cost: 250, icon: Coins, desc: '每次戰鬥多選一個獎勵 (幸運流)', unlockCost: 800, effect: (p) => ({ ...p, extraReward: true }) },
             { id: 'infinity_edge', name: '無盡之刃', type: 'weapon', val: 0, tier: 3, cost: 400, icon: Sword, desc: '暴擊傷害 +100% (爆擊流)', unlockCost: 1500, effect: (p) => ({ ...p, critMult: p.critMult + 1.0 }) },
             { id: 'phoenix_ash', name: '鳳凰灰燼', type: 'special', val: 0, tier: 3, cost: 500, icon: Flame, desc: '死亡時復活一次 (一次性)', unlockCost: 2000, effect: (p) => ({ ...p, revive: true }) },
-        ];
-
-        const MONSTER_TYPES = [
-            { name: '史萊姆', hpMod: 0.8, atkMod: 0.8, speedMod: 0.8, color: 'text-green-400', icon: Ghost, effect: 'confusion', effectName: '混亂' },
-            { name: '蝙蝠', hpMod: 0.6, atkMod: 1.2, speedMod: 1.5, color: 'text-purple-400', icon: Wind, effect: 'blind', effectName: '致盲' },
-            { name: '石像鬼', hpMod: 1.5, atkMod: 1.0, speedMod: 0.6, color: 'text-stone-400', icon: Shield, effect: 'silence', effectName: '封印' },
-            { name: '暗影刺客', hpMod: 0.8, atkMod: 1.5, speedMod: 1.2, color: 'text-red-400', icon: Sword, effect: 'blind', effectName: '致盲' },
-            { name: '字靈龍', hpMod: 2.5, atkMod: 1.5, speedMod: 1.0, color: 'text-yellow-400', icon: Crown, isBoss: true, effect: 'silence', effectName: '龍威' },
-            { name: '深淵領主', hpMod: 3.0, atkMod: 1.8, speedMod: 0.8, color: 'text-rose-500', icon: Skull, isBoss: true, effect: 'confusion', effectName: '恐懼' },
         ];
 
         const RPG_SKILLS = [
@@ -1133,7 +936,7 @@
         };
 
         // --- 🏃 Runner Game ---
-        const RunnerGame = ({ inputMode, difficulty, chapter, onExit, onHome, currentTheme, user }) => {
+        const RunnerGame = ({ inputMode, difficulty, chapter, onExit, onHome, currentTheme = THEMES.FOREST, user }) => {
             const [score, setScore] = useState(0);
             const [time, setTime] = useState(0);
             const [qIndex, setQIndex] = useState(0);
@@ -1252,10 +1055,6 @@
             );
         };
 
-        const THEMES = {
-            FOREST: { bg: 'bg-gradient-to-b from-sky-300 to-blue-100', road: 'from-slate-700 to-slate-900', decor: Trees }
-        };
-
         // --- 🏠 App Component ---
         const App = () => {
             const [view, setView] = useState('home'); 
@@ -1313,7 +1112,7 @@
                 setView('category_select');
             };
 
-            if (view === 'home') return ( <div className="h-full flex flex-col items-center justify-center bg-slate-900 p-6 text-white"><div className="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center w-full max-w-md border border-slate-700"><LucideIcon icon={Rocket} size={64} className="text-magic-500 mx-auto mb-6" /><h1 className="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-magic-300 to-brand-300">速成大冒險 V16</h1><p className="text-slate-400 mb-8">Roguelite 知識深淵</p><input className="w-full p-4 bg-slate-900 border border-slate-600 rounded-xl text-center text-lg mb-6 text-white focus:border-magic-500 outline-none" placeholder="召喚師之名" value={userName} onChange={e=>setUserName(e.target.value)} /><button disabled={!userName} onClick={()=>{AudioEngine.click(); setView('mode_select')}} className="w-full bg-magic-600 hover:bg-magic-500 text-white p-4 rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2 mb-4"><LucideIcon icon={Play} /> 進入深淵</button><div className="flex gap-4 justify-center text-sm text-slate-500"><label className="cursor-pointer hover:text-magic-300 flex items-center gap-1"><LucideIcon icon={Upload} size={14}/> 讀取 <input type="file" className="hidden" onChange={handleImportSave}/></label><button onClick={handleExportSave} className="hover:text-magic-300 flex items-center gap-1"><LucideIcon icon={Download} size={14}/> 備份</button></div></div></div> );
+            if (view === 'home') return ( <div className="h-full flex flex-col items-center justify-center bg-slate-900 p-6 text-white"><div className="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center w-full max-w-md border border-slate-700"><LucideIcon icon={Rocket} size={64} className="text-magic-500 mx-auto mb-6" /><h1 className="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-magic-300 to-brand-300">速成大冒險 V25</h1><p className="text-slate-400 mb-8">Roguelite 知識深淵</p><input className="w-full p-4 bg-slate-900 border border-slate-600 rounded-xl text-center text-lg mb-6 text-white focus:border-magic-500 outline-none" placeholder="召喚師之名" value={userName} onChange={e=>setUserName(e.target.value)} /><button disabled={!userName} onClick={()=>{AudioEngine.click(); setView('mode_select')}} className="w-full bg-magic-600 hover:bg-magic-500 text-white p-4 rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2 mb-4"><LucideIcon icon={Play} /> 進入深淵</button><div className="flex gap-4 justify-center text-sm text-slate-500"><label className="cursor-pointer hover:text-magic-300 flex items-center gap-1"><LucideIcon icon={Upload} size={14}/> 讀取 <input type="file" className="hidden" onChange={handleImportSave}/></label><button onClick={handleExportSave} className="hover:text-magic-300 flex items-center gap-1"><LucideIcon icon={Download} size={14}/> 備份</button></div></div></div> );
 
             if (view === 'mode_select') return ( <div className="h-full bg-slate-950 p-6 overflow-y-auto text-white"><div className="flex justify-between items-center mb-8 max-w-4xl mx-auto"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-magic-900 rounded-full flex items-center justify-center border border-magic-600"><LucideIcon icon={User} className="text-magic-300"/></div><div><h2 className="text-xl font-bold">{userName}</h2><div className="flex items-center gap-1 text-gold-400 text-sm"><LucideIcon icon={Coins} size={14}/> {metaState.coins}</div></div></div><button onClick={()=>setView('home')} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700"><LucideIcon icon={Home} /></button></div><div className="grid gap-6 max-w-4xl mx-auto"><div onClick={()=>setView('meta_shop')} className="bg-gradient-to-r from-slate-900 to-magic-900 p-6 rounded-3xl border border-magic-500/30 cursor-pointer hover:scale-[1.02] transition-transform flex items-center justify-between"><div><h3 className="text-2xl font-bold text-gold-400 mb-1 flex items-center gap-2"><LucideIcon icon={ShoppingBag}/> 知識聖殿</h3><p className="text-slate-400 text-sm">消耗知識幣，強化自身與解鎖遺物</p></div><LucideIcon icon={ArrowLeft} className="rotate-180 text-slate-500" /></div><div className="grid md:grid-cols-2 gap-6">
                 <div onClick={()=>{setConfig({...config, mode: 'rpg'}); setView('game_setup')}} className="bg-slate-800 p-6 rounded-3xl border border-slate-700 hover:border-magic-500 transition-colors cursor-pointer group"><LucideIcon icon={Sword} size={40} className="text-purple-400 mb-4" /><h3 className="text-2xl font-bold mb-2 group-hover:text-magic-300">深淵試煉 (RPG)</h3><p className="text-slate-400 text-sm mb-6">挑戰無限層數，Roguelite 成長體驗。</p><div className="flex justify-end"><LucideIcon icon={Play} size={24} className="text-magic-500 group-hover:scale-110 transition-transform"/></div></div>
